@@ -147,6 +147,8 @@ def main():
                         help="Avoid using CUDA when available")
     parser.add_argument('--seed', type=int, default=42,
                         help="random seed for initialization")
+    parser.add_argument("--file_to_write", default=None, type=str,
+                        help="Whether we would like to write to file, pass where to.")
     args = parser.parse_args()
 
     args.device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
@@ -171,6 +173,8 @@ def main():
     eos = tokenizer.encode(tokenizer.eos_token)[0]
 
     print(args)
+    if args.file_to_write:
+        output_file = open(args.file_to_write, "w")
     while True:
         raw_text = args.prompt if args.prompt else input("Model prompt >>> ")
         if args.model_type in ["transfo-xl", "xlnet"]:
@@ -193,7 +197,10 @@ def main():
             if eos in o:
                 o = o[:o.index(eos)]
             text = tokenizer.decode(o, clean_up_tokenization_spaces=True)
-            print(text)
+            if output_file:
+                output_file.write(text)
+            else:
+                print(text)
         if args.prompt:
             break
     return text

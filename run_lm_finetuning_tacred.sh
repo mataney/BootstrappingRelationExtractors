@@ -10,7 +10,7 @@ done
 export PYTHONPATH=$PYTHONPATH:../pytorch-transformers
 
 # Local config
-if $LOCAL_TEST;
+if ! $LOCAL_TEST;
 then
     python run_lm_finetuning.py \
         --output_dir=$OUTPUT_DIR \

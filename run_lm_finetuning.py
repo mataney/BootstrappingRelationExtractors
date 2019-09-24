@@ -53,16 +53,20 @@ MODEL_CLASSES = {
     'roberta': (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer)
 }
 
-# START_SUBJ = '<|subj|>'
-# END_SUBJ = '<|/subj|>'
-# START_OBJ = '<|obj|>'
-# END_OBJ = '<|/obj|>'
-# START_TRIGGER = '<|trigger|>'
-# END_TRIGGER = '<|/trigger|>'
-GO = '<|GO|>'
+CLEANINGMAP = {'-RRB-': ')', '-LRB-': '(', '-LSB-': '[',
+               '-RSB-': ']', '-LCB-': '{', '-RCB-': '}',
+               '&nbsp;': ' ', '&quot;': "'", '--': '-', '---': '-'}
 
-# SPECIAL_TOKENS = [START_SUBJ, END_SUBJ, START_OBJ, END_OBJ, START_TRIGGER, END_TRIGGER, GO]
-SPECIAL_TOKENS = [GO]
+START_SUBJ = '<|subj|>'
+END_SUBJ = '<|/subj|>'
+START_OBJ = '<|obj|>'
+END_OBJ = '<|/obj|>'
+START_TRIGGER = '<|trigger|>'
+END_TRIGGER = '<|/trigger|>'
+GO = '<|GO|>'
+SPECIAL_TOKENS = [START_SUBJ, END_SUBJ, START_OBJ, END_OBJ, START_TRIGGER, END_TRIGGER, GO]
+# SPECIAL_TOKENS = [GO]
+
 NO_RELATION = "no_relation"
 
 ONE_SHOT_RELATION = {"org:founded_by": "founded by", "per:employee_of": "works at", "org:alternate_names": "is also known as", "per:cities_of_residence": "lived in", "per:children": "'s child is", 
@@ -94,31 +98,30 @@ class TACREDDataset(Dataset):
             with open(file_path, encoding="utf-8") as f:
                 parsed_json = json.load(f)
 
-            cleaningmap = {'-RRB-': ')', '-LRB-': '(', '-LSB-': '[',
-                            '-RSB-': ']', '-LCB-': '{', '-RCB-': '}',
-                            '&nbsp;': ' ', '&quot;': "'", '--': '-', '---': '-'}
-
-            def clean_token(tokens):
-                return [cleaningmap.get(t, t) for t in tokens]
-
             text = ""
             anonymize = False
-            for relation in parsed_json:
-                if relation['relation'] == NO_RELATION:
+            mark_relation_args = True
+            for relation_dict in parsed_json:
+                if relation_dict['relation'] == NO_RELATION:
                     continue
                 
-                if relation['relation'] == "per:spouse":
+                if relation_dict['relation'] == "per:spouse":
                     continue
 
-                relation_example = ONE_SHOT_RELATION[relation['relation']]
+                relation_example = ONE_SHOT_RELATION[relation_dict['relation']]
+                subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx = [relation_dict[key] for key in ['subj_start', 'subj_end', 'obj_start', 'obj_end']]
+
                 if anonymize:
-                    subj = relation['subj_type']
-                    obj = relation['obj_type']
-                    example_text = [relation['token'][i] if ner == 'O' else ner for i, ner in enumerate(relation['stanford_ner'])]
+                    subj = relation_dict['subj_type']
+                    obj = relation_dict['obj_type']
+                    example_text = [relation_dict['token'][i] if ner == 'O' else ner for i, ner in enumerate(relation_dict['stanford_ner'])]
                 else:
-                    subj = " ".join(relation['token'][relation['subj_start'] : relation['subj_end'] + 1])
-                    obj = " ".join(relation['token'][relation['obj_start'] : relation['obj_end'] + 1])
-                    example_text = relation['token']
+                    subj = " ".join(relation_dict['token'][subj_start_idx : subj_end_idx + 1])
+                    obj = " ".join(relation_dict['token'][obj_start_idx : obj_end_idx + 1])
+                    example_text = relation_dict['token']
+
+                if mark_relation_args:
+                    example_text = mark_args(example_text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx)
                 
                 cleaned_example = clean_token(example_text)
                 example_string = " ".join(cleaned_example)
@@ -148,6 +151,22 @@ class TACREDDataset(Dataset):
     def __getitem__(self, item):
         return torch.tensor(self.examples[item])  # pylint: disable=not-callable
 
+def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
+    if obj_end_idx > subj_end_idx:
+        text.insert(obj_end_idx + 1, END_OBJ)
+        text.insert(obj_start_idx, START_OBJ)
+        text.insert(subj_end_idx + 1, END_SUBJ)
+        text.insert(subj_start_idx, START_SUBJ)
+    else:
+        text.insert(subj_end_idx + 1, END_SUBJ)
+        text.insert(subj_start_idx, START_SUBJ)
+        text.insert(obj_end_idx + 1, END_OBJ)
+        text.insert(obj_start_idx, START_OBJ)
+
+    return text
+
+def clean_token(tokens):
+    return [CLEANINGMAP.get(t, t) for t in tokens]
 
 def load_and_cache_examples(args, tokenizer, evaluate=False):
     dataset = TACREDDataset(tokenizer, args.output_dir, file_path=args.eval_data_file if evaluate else args.train_data_file, block_size=args.block_size)
