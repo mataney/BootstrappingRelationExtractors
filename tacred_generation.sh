@@ -1,10 +1,21 @@
-MODEL_DIR=$1
-export PYTHONPATH=$PYTHONPATH:.
+num_samples=10
 
-python examples/run_generation.py \
+while getopts o:f:s: option
+do
+case "${option}"
+in
+o) model_dir=${OPTARG};;
+f) file_to_write=${OPTARG};;
+s) num_samples=${OPTARG};;
+esac
+done
+export PYTHONPATH=$PYTHONPATH:../pytorch-transformers
+
+python run_generation.py \
     --model_type=gpt2 \
-    --model_name_or_path=$MODEL_DIR \
-    --num_samples=10 \
+    --model_name_or_path=$model_dir \
+    --file_to_write=$file_to_write \
+    --num_samples=$num_samples \
     --top_k=40 \
     --top_p=0.0 \
     --length=50

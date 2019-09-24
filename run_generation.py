@@ -18,6 +18,7 @@
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import os
 import argparse
 import logging
 from tqdm import trange
@@ -40,6 +41,7 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
 logger = logging.getLogger(__name__)
 
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
+MAX_BATCH = 100
 
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (GPT2Config, OpenAIGPTConfig, XLNetConfig, TransfoXLConfig)), ())
 
@@ -171,40 +173,48 @@ def main():
         args.length = MAX_LENGTH  # avoid infinite loop
 
     eos = tokenizer.encode(tokenizer.eos_token)[0]
-
     print(args)
+
     if args.file_to_write:
-        output_file = open(args.file_to_write, "w")
+        output_file = open(os.path.join(args.model_name_or_path, args.file_to_write), "w")
+
     while True:
         raw_text = args.prompt if args.prompt else input("Model prompt >>> ")
         if args.model_type in ["transfo-xl", "xlnet"]:
             # Models with memory likes to have a long prompt for short inputs.
             raw_text = (args.padding_text if args.padding_text else PADDING_TEXT) + raw_text
         context_tokens = tokenizer.encode(raw_text)
-        out = sample_sequence(
-            model=model,
-            context=context_tokens,
-            num_samples=args.num_samples,
-            length=args.length,
-            temperature=args.temperature,
-            top_k=args.top_k,
-            top_p=args.top_p,
-            device=args.device,
-            is_xlnet=bool(args.model_type == "xlnet"),
-        )
+
+        samples_splits = args.num_samples//MAX_BATCH * [MAX_BATCH]
+        if args.num_samples%MAX_BATCH > 0: samples_splits.append(args.num_samples%MAX_BATCH)
+
+        for curr_samples in samples_splits:
+            out = sample_sequence(
+                model=model,
+                context=context_tokens,
+                num_samples=curr_samples,
+                length=args.length,
+                temperature=args.temperature,
+                top_k=args.top_k,
+                top_p=args.top_p,
+                device=args.device,
+                is_xlnet=bool(args.model_type == "xlnet"),
+            )
         out = out[:, len(context_tokens):].tolist()
         for o in out:
             if eos in o:
                 o = o[:o.index(eos)]
             text = tokenizer.decode(o, clean_up_tokenization_spaces=True)
             if output_file:
-                output_file.write(text)
+                output_file.write(text+'\n')
             else:
                 print(text)
         if args.prompt:
             break
     return text
 
+    if output_file:
+        output_file.close()
 
 if __name__ == '__main__':
     main()
