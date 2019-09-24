@@ -1,19 +1,20 @@
-while getopts o:t: option
+local_test=0
+
+while getopts o:t option
 do
 case "${option}"
 in
-o) OUTPUT_DIR=${OPTARG};;
-t) LOCAL_TEST=${OPTARG};;
+o) output_dir=${OPTARG};;
+t) local_test=1;;
 esac
 done
 
 export PYTHONPATH=$PYTHONPATH:../pytorch-transformers
 
 # Local config
-if ! $LOCAL_TEST;
-then
+if [ $local_test -eq 0 ];then
     python run_lm_finetuning.py \
-        --output_dir=$OUTPUT_DIR \
+        --output_dir=$output_dir \
         --model_type=gpt2 \
         --model_name_or_path=gpt2-medium \
         --do_train \
@@ -25,7 +26,7 @@ then
         # --fp16
 else
     python run_lm_finetuning.py \
-        --output_dir=$OUTPUT_DIR \
+        --output_dir=$output_dir \
         --model_type=gpt2 \
         --model_name_or_path=gpt2 \
         --do_train \

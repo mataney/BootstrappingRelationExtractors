@@ -458,7 +458,6 @@ def main():
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
     args = parser.parse_args()
-    print(args.output_dir)
 
     if args.model_type in ["bert", "roberta"] and not args.mlm:
         raise ValueError("BERT and RoBERTa do not have LM heads but masked LM heads. They must be run using the --mlm "
