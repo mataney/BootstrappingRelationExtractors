@@ -35,8 +35,6 @@ def main():
                               where we will output the filtered out file")
     parser.add_argument("--generation_file", default=None, type=str, required=True,
                         help="The generation output script file")
-    # parser.add_argument("--relation", default=None, type=str, required=True,
-    #                     help="The relation we want to check about")
     parser.add_argument("--trigger_list_path", default=None, type=str, required=True,
                         help="Path of the list of triggers corresponding to a relation")
 

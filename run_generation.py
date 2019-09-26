@@ -101,8 +101,9 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
         sorted_indices_to_remove[..., 0] = 0
 
-        indices_to_remove = sorted_indices[sorted_indices_to_remove]
+        indices_to_remove = sorted_indices_to_remove.scatter(dim=1, index=sorted_indices, src=sorted_indices_to_remove)
         logits[indices_to_remove] = filter_value
+
     return logits
 
 
@@ -205,7 +206,7 @@ def main():
             if eos in o:
                 o = o[:o.index(eos)]
             text = tokenizer.decode(o, clean_up_tokenization_spaces=True)
-            if output_file:
+            if args.file_to_write:
                 output_file.write(text+'\n')
             else:
                 print(text)
@@ -213,7 +214,7 @@ def main():
             break
     return text
 
-    if output_file:
+    if args.file_to_write:
         output_file.close()
 
 if __name__ == '__main__':
