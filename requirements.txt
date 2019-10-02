@@ -12,6 +12,6 @@ regex
 sentencepiece
 # For XLM
 sacremoses
-
 tensorboardX
 scikit-learn
+pytest

@@ -1,14 +1,7 @@
 import argparse
 import os
 
-def read_file(file_path, remove_duplicates=False):
-    with open(file_path, 'r') as file:
-        ret = file.read().splitlines()
-    if remove_duplicates:
-        ret = list(set(ret))
-    if '' in ret: ret.remove('')
-
-    return ret
+from utils import read_file
 
 def filter_out(sentences, triggers):
     filtered_sentences = []
