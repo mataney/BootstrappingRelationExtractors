@@ -201,18 +201,18 @@ def main():
                 device=args.device,
                 is_xlnet=bool(args.model_type == "xlnet"),
             )
-        out = out[:, len(context_tokens):].tolist()
-        for o in out:
-            if eos in o:
-                o = o[:o.index(eos)]
-            text = tokenizer.decode(o, clean_up_tokenization_spaces=True)
-            if args.file_to_write:
-                output_file.write(text+'\n')
-            else:
-                print(text)
-        if args.prompt:
-            break
-    return text
+            out = out[:, len(context_tokens):].tolist()
+
+            for o in out:
+                if eos in o:
+                    o = o[:o.index(eos)]
+                text = tokenizer.decode(o, clean_up_tokenization_spaces=True)
+                if args.file_to_write:
+                    output_file.write(text+'\n')
+                else:
+                    print(text)
+            if args.prompt:
+                break
 
     if args.file_to_write:
         output_file.close()

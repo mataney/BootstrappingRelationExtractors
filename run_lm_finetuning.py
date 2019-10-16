@@ -36,6 +36,7 @@ from torch.utils.data.distributed import DistributedSampler
 from tensorboardX import SummaryWriter
 from tqdm import tqdm, trange
 
+
 from pytorch_transformers import (WEIGHTS_NAME, AdamW, WarmupLinearSchedule,
                                   BertConfig, BertForMaskedLM, BertTokenizer,
                                   GPT2Config, GPT2LMHeadModel, GPT2Tokenizer,
@@ -45,6 +46,8 @@ from pytorch_transformers import (WEIGHTS_NAME, AdamW, WarmupLinearSchedule,
 
 logger = logging.getLogger(__name__)
 
+ANONYMIZE = False
+MARK_RELATION_ARGS = False
 
 MODEL_CLASSES = {
     'gpt2': (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
@@ -64,22 +67,52 @@ END_OBJ = '<|/obj|>'
 START_TRIGGER = '<|trigger|>'
 END_TRIGGER = '<|/trigger|>'
 GO = '<|GO|>'
-SPECIAL_TOKENS = [START_SUBJ, END_SUBJ, START_OBJ, END_OBJ, START_TRIGGER, END_TRIGGER, GO]
-# SPECIAL_TOKENS = [GO]
+SPECIAL_TOKENS = [GO]
+if MARK_RELATION_ARGS:
+    SPECIAL_TOKENS += [START_SUBJ, END_SUBJ, START_OBJ, END_OBJ, START_TRIGGER, END_TRIGGER]
 
 NO_RELATION = "no_relation"
 
-ONE_SHOT_RELATION = {"org:founded_by": "founded by", "per:employee_of": "works at", "org:alternate_names": "is also known as", "per:cities_of_residence": "lived in", "per:children": "'s child is", 
-                     "per:title": [", the", "of"], "per:siblings": "'s brother", "per:religion": ", a devouted", "per:age": ["is", "years old"], "org:website": ", online in", 
-                     "per:stateorprovinces_of_residence": "lived in", "org:member_of": ", member of", "org:top_members/employees": "is high ranked at", 
-                     "per:countries_of_residence": "lived in", "org:city_of_headquarters": ", based in", "org:members": "of the", "org:country_of_headquarters": "based in", 
-                     "per:spouse": "married", "org:stateorprovince_of_headquarters": ", based in", "org:number_of_employees/members": ["has", "members"], "org:parents": ["is", "'s father"],
-                      "org:subsidiaries": ", the parent company of", "per:origin": "'s nationality is", "org:political/religious_affiliation": "political/religious affiliation is", 
-                      "per:other_family": "is a family member of", "per:stateorprovince_of_birth": "was born in", "org:dissolved": "dissolved at", "per:date_of_death": "died at", 
-                      "org:shareholders": "is a shareholder at", "per:alternate_names": "is also known as", "per:parents": "'s parent is", "per:schools_attended": "graduated from", 
-                      "per:cause_of_death": "died of", "per:city_of_death": "died in", "per:stateorprovince_of_death": "died in", "org:founded": "founded at", 
-                      "per:country_of_birth": "was born in", "per:date_of_birth": "was born at", "per:city_of_birth": "was born in", "per:charges": "was charged with",
-                      "per:country_of_death": "died in"}
+RELATIONS_TO_LEAVE_OUT = ["per:city_of_death", "per:city_of_birth"]
+
+ONE_SHOT_RELATION = {"org:founded_by": "founded by",
+                     "per:employee_of": "works at",
+                     "org:alternate_names": "is also known as",
+                     "per:cities_of_residence": "lived in",
+                     "per:children": "'s child is",
+                     "per:title": [", the", "of"], "per:siblings": "'s brother",
+                     "per:religion": ", a devouted",
+                     "per:age": ["is", "years old"], "org:website": ", online in",
+                     "per:stateorprovinces_of_residence": "lived in",
+                     "org:member_of": ", member of",
+                     "org:top_members/employees": "is high ranked at",
+                     "per:countries_of_residence": "lived in",
+                     "org:city_of_headquarters": ", based in",
+                     "org:members": "of the",
+                     "org:country_of_headquarters": "based in",
+                     "per:spouse": "married",
+                     "org:stateorprovince_of_headquarters": ", based in",
+                     "org:number_of_employees/members": ["has", "members"], "org:parents": ["is", "'s father"],
+                     "org:subsidiaries": ", the parent company of",
+                     "per:origin": "'s nationality is",
+                     "org:political/religious_affiliation": "political/religious affiliation is",
+                     "per:other_family": "is a family member of",
+                     "per:stateorprovince_of_birth": "was born in",
+                     "org:dissolved": "dissolved at",
+                     "per:date_of_death": "died at",
+                     "org:shareholders": "is a shareholder at",
+                     "per:alternate_names": "is also known as",
+                     "per:parents": "'s parent is",
+                     "per:schools_attended": "graduated from",
+                     "per:cause_of_death": "died of",
+                     "per:city_of_death": "died in",
+                     "per:stateorprovince_of_death": "died in",
+                     "org:founded": "founded at",
+                     "per:country_of_birth": "was born in",
+                     "per:date_of_birth": "was born at",
+                     "per:city_of_birth": "was born in",
+                     "per:charges": "was charged with",
+                     "per:country_of_death": "died in"}
 
 class TACREDDataset(Dataset):
     def __init__(self, tokenizer, output_dir, file_path='train', block_size=512):
@@ -99,19 +132,17 @@ class TACREDDataset(Dataset):
                 parsed_json = json.load(f)
 
             text = ""
-            anonymize = False
-            mark_relation_args = True
             for relation_dict in parsed_json:
                 if relation_dict['relation'] == NO_RELATION:
                     continue
-                
-                if relation_dict['relation'] == "per:spouse":
+
+                if leave_few_relation_out(relation_dict['relation']):
                     continue
 
                 relation_example = ONE_SHOT_RELATION[relation_dict['relation']]
                 subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx = [relation_dict[key] for key in ['subj_start', 'subj_end', 'obj_start', 'obj_end']]
 
-                if anonymize:
+                if ANONYMIZE:
                     subj = relation_dict['subj_type']
                     obj = relation_dict['obj_type']
                     example_text = [relation_dict['token'][i] if ner == 'O' else ner for i, ner in enumerate(relation_dict['stanford_ner'])]
@@ -120,12 +151,12 @@ class TACREDDataset(Dataset):
                     obj = " ".join(relation_dict['token'][obj_start_idx : obj_end_idx + 1])
                     example_text = relation_dict['token']
 
-                if mark_relation_args:
+                if MARK_RELATION_ARGS:
                     example_text = mark_args(example_text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx)
-                
+
                 cleaned_example = clean_token(example_text)
                 example_string = " ".join(cleaned_example)
-                
+
                 if isinstance(relation_example, str):
                     context = f"{subj} {relation_example} {obj}"
                 else:
@@ -164,6 +195,9 @@ def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
         text.insert(obj_start_idx, START_OBJ)
 
     return text
+
+def leave_few_relation_out(relation):
+    return relation in RELATIONS_TO_LEAVE_OUT
 
 def clean_token(tokens):
     return [CLEANINGMAP.get(t, t) for t in tokens]

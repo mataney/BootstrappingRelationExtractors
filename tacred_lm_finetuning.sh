@@ -28,7 +28,7 @@ else
     python run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
-        --model_name_or_path=gpt2 \
+        --model_name_or_path=gpt2-medium \
         --do_train \
         --train_data_file=$HOME/matan/dev/datasets/tacred/data/json/train.json \
         --block_size=512 \

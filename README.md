@@ -4,7 +4,7 @@ In thie repository we use [huggingface's pytorch-transformers](https://github.co
 
 ## Finetune
 
-You should finetune your on your dataset using a `run_lm_finetuning.py` or an easy to use bash script similar to the one used for TACRED `tacred_generation.sh`. This file is also an example of the arguments you should pass `run_lm_finetuning.py`.
+You should finetune on your dataset using a `run_lm_finetuning.py` or an easy to use bash script similar to the one used for TACRED `tacred_generation.sh`. This file is also an example of the arguments you should pass `run_lm_finetuning.py`.
 
 ## Generation
 
@@ -16,4 +16,4 @@ You should filter out examples using premade trigger list. This might be expende
 
 ## Cluster and Rank syntactic patterns
 
-Soon.
+This happens when connecting to spike, example coming soon. (For now, like in `diversity evaluation method.ipynb`)
