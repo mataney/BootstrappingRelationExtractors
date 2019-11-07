@@ -16,6 +16,6 @@ python run_generation.py \
     --model_name_or_path=$model_dir \
     --file_to_write=$file_to_write \
     --num_samples=$num_samples \
-    --length=4 \
+    --length=50 \
     --top_p=0.9 \
     # --top_k=5 \
