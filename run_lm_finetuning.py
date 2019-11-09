@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 ANONYMIZE = False
 MARK_RELATION_ARGS = False
+ALLOW_NO_RELATION = True
 
 MODEL_CLASSES = {
     'gpt2': (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
@@ -96,10 +97,7 @@ class TACREDDataset(Dataset):
 
             all_text = []
             for relation_dict in parsed_json:
-                if relation_dict['relation'] == NO_RELATION:
-                    continue
-
-                if leave_few_relation_out(relation_dict['relation']):
+                if leave_some_relations_out(relation_dict['relation']):
                     continue
 
                 subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx = [relation_dict[key] for key in ['subj_start', 'subj_end', 'obj_start', 'obj_end']]
@@ -118,6 +116,11 @@ class TACREDDataset(Dataset):
 
                 cleaned_example = clean_token(example_text)
                 example_string = " ".join(cleaned_example)
+
+                if relation_dict['relation'] == NO_RELATION:
+                    if ALLOW_NO_RELATION:
+                        all_text.append(example_string)
+                    continue
 
                 relation_contexts = CANONICAL_FORMS[relation_dict['relation']]
                 for relation_context in relation_contexts:
@@ -158,7 +161,7 @@ def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
 
     return text
 
-def leave_few_relation_out(relation):
+def leave_some_relations_out(relation):
     return relation in RELATIONS_TO_LEAVE_OUT
 
 def clean_token(tokens):
