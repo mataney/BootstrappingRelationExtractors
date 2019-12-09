@@ -5,7 +5,7 @@ import json
 
 from relation_canonical_form import CANONICAL_FORMS
 
-from pytorch_transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
 CLEANINGMAP = {'-RRB-': ')', '-LRB-': '(', '-LSB-': '[',
                '-RSB-': ']', '-LCB-': '{', '-RCB-': '}',
@@ -91,15 +91,29 @@ def main(args):
                 src = " ".join(cleaned_example[:4])
                 if src == "":
                     continue
+            if args.agenda:
+                if args.only_one_token_subj_obj:
+                    subj = one_token_per_arg(tokenizer, subj)
+                    obj = one_token_per_arg(tokenizer, obj)
+                    if subj is None or obj is None:
+                        # Couldn't find subj or obj subwords that hav just one token
+                        continue
+                agendas.append(f"{subj} {ENCODER_AGNOSTIC_PAD} {obj}\n")
             srcs.append(src+'\n')
             tgts.append(tgt+'\n')
-            if args.agenda: 
-                agendas.append(f"{subj} {ENCODER_AGNOSTIC_PAD} {obj}\n")
         
     with open(args.save_to_file+'.src', 'w') as f: f.writelines(srcs)
     with open(args.save_to_file+'.tgt', 'w') as f: f.writelines(tgts)
     if args.agenda:
         with open(args.save_to_file+'.agenda', 'w') as f: f.writelines(agendas)
+
+def one_token_per_arg(tokenizer, word):
+    tokens = word.split()
+    for t in tokens:
+        token_id = tokenizer.encode(t, add_prefix_space=True)
+        if len(token_id) == 1:
+            return t
+    return None
 
 def bio(tokens):
     insides = " ".join([f"{t}|I" for t in tokens[1:]])
@@ -149,6 +163,7 @@ if __name__ == '__main__':
     parser.add_argument("--one_form_per_relation", action='store_true')
     parser.add_argument("--first_four_as_src", action='store_true')
     parser.add_argument("--agenda", action='store_true')
+    parser.add_argument("--only_one_token_subj_obj", action='store_true')
 
     args = parser.parse_args()
     args.model_type = 'gpt2'
