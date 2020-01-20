@@ -9,11 +9,11 @@ t) local_test=1;;
 esac
 done
 
-export PYTHONPATH=$PYTHONPATH:../pytorch-transformers
+export PYTHONPATH=$PYTHONPATH:../transformers
 
 # Local config
 if [ $local_test -eq 0 ];then
-    python run_lm_finetuning.py \
+    python ../transformers/examples/run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
         --model_name_or_path=gpt2 \
@@ -25,7 +25,7 @@ if [ $local_test -eq 0 ];then
         --save_steps=1000
         # --fp16
 else
-    python run_lm_finetuning.py \
+    python ../transformers/examples/run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
         --model_name_or_path=gpt2-medium \
