@@ -102,6 +102,8 @@ def main(args):
     if not args.src_and_tgt_one_file_with_go:
         with open(args.save_to_file+'.tgt', 'w') as f: f.writelines(tgts)
 
+    with open(args.save_to_file+'.special_tokens', 'w') as f: f.writelines(SPECIAL_TOKENS)
+
 def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
     if obj_end_idx > subj_end_idx:
         text.insert(obj_end_idx + 1, END_OBJ)
