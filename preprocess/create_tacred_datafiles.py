@@ -21,6 +21,11 @@ END_OBJ = '<|/obj|>'
 START_TRIGGER = '<|trigger|>'
 END_TRIGGER = '<|/trigger|>'
 GO = '<|GO|>'
+E1 = '<|E1|>'
+END_E1 = '<|\E1|>'
+E2 = '<|E2|>'
+END_E2 = '<|\E2|>'
+
 
 NO_RELATION = "no_relation"
 
@@ -30,6 +35,8 @@ def main(args):
     SPECIAL_TOKENS = [GO]
     if args.mark_relation_args:
         SPECIAL_TOKENS += [START_SUBJ, END_SUBJ, START_OBJ, END_OBJ, START_TRIGGER, END_TRIGGER]
+    elif args.anonymize_tgt:
+        SPECIAL_TOKENS += [E1, END_E1, E2, END_E2]
 
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     config = config_class.from_pretrained(
@@ -69,14 +76,9 @@ def main(args):
 
         subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx = [relation_dict[key] for key in ['subj_start', 'subj_end', 'obj_start', 'obj_end']]
 
-        if args.anonymize:
-            subj = relation_dict['subj_type']
-            obj = relation_dict['obj_type']
-            example_text = [relation_dict['token'][i] if ner == 'O' else ner for i, ner in enumerate(relation_dict['stanford_ner'])]
-        else:
-            subj = " ".join(relation_dict['token'][subj_start_idx : subj_end_idx + 1])
-            obj = " ".join(relation_dict['token'][obj_start_idx : obj_end_idx + 1])
-            example_text = relation_dict['token']
+        subj = " ".join(relation_dict['token'][subj_start_idx : subj_end_idx + 1])
+        obj = " ".join(relation_dict['token'][obj_start_idx : obj_end_idx + 1])
+        example_text = relation_dict['token']
 
         if args.mark_relation_args:
             example_text = mark_args(example_text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx)
@@ -85,13 +87,18 @@ def main(args):
 
         cleaned_example = clean_token(example_text)
         tgt = " ".join(cleaned_example)
+        if args.anonymize_tgt:
+            tgt = anonymize(tgt, subj, obj)
 
         if args.one_form_per_relation:
             relation_contexts = [CANONICAL_FORMS[relation_dict['relation']][0]]
         else:
             relation_contexts = CANONICAL_FORMS[relation_dict['relation']]
         for relation_context in relation_contexts:
-            src = relation_context.replace("{subj}", subj).replace("{obj}", obj)
+            if args.anonymize_tgt:
+                src = relation_context.replace("{subj}", f"{E1} {subj} {END_E1}").replace("{obj}", f"{E2} {obj} {END_E2}")
+            else:
+                src = relation_context.replace("{subj}", subj).replace("{obj}", obj)
             if args.src_and_tgt_one_file_with_go:
                 srcs.append(src + f" {GO} " + tgt+'\n')
             else:
@@ -102,7 +109,7 @@ def main(args):
     if not args.src_and_tgt_one_file_with_go:
         with open(args.save_to_file+'.tgt', 'w') as f: f.writelines(tgts)
 
-    with open(args.save_to_file+'.special_tokens', 'w') as f: f.writelines(SPECIAL_TOKENS)
+    with open(args.save_to_file+'.special_tokens', 'w') as f: f.writelines(f"{t}\n" for t in SPECIAL_TOKENS)
 
 def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
     if obj_end_idx > subj_end_idx:
@@ -117,6 +124,9 @@ def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
         text.insert(obj_start_idx, START_OBJ)
 
     return text
+
+def anonymize(text, e1, e2):
+    return text.replace(e1, E1).replace(e2, E2)
 
 def truncate_noise(example_text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
     padding = 0
@@ -139,7 +149,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--file_path", default=None, type=str, required=True)
     parser.add_argument("--save_to_file", default=None, type=str, required=True)
-    parser.add_argument("--anonymize", action='store_true')
+    parser.add_argument("--anonymize_tgt", action='store_true')
     parser.add_argument("--mark_relation_args", action='store_true')
     parser.add_argument("--allow_no_relation", action='store_true')
     parser.add_argument("--truncate_noise", action='store_true')
