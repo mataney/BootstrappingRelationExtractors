@@ -32,7 +32,9 @@ NO_RELATION = "no_relation"
 RELATIONS_TO_LEAVE_OUT = []
 
 def main(args):
-    SPECIAL_TOKENS = [GO]
+    SPECIAL_TOKENS = []
+    if args.src_and_tgt_one_file_with_go:
+        SPECIAL_TOKENS += [GO]
     if args.mark_relation_args:
         SPECIAL_TOKENS += [START_SUBJ, END_SUBJ, START_OBJ, END_OBJ, START_TRIGGER, END_TRIGGER]
     elif args.anonymize_tgt:
