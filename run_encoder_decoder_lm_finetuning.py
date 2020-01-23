@@ -175,7 +175,7 @@ def _rotate_checkpoints(args, checkpoint_prefix, use_mtime=False):
         logger.info("Deleting older checkpoint [{}] due to args.save_total_limit".format(checkpoint))
         shutil.rmtree(checkpoint)
 
-def collate(data):
+def collate(data, device):
     def pad_sequences(sequences):
         lengths = [len(seq) for seq in sequences]
 
@@ -194,17 +194,17 @@ def collate(data):
     src_batch, src_mask = pad_sequences(srcs)
     tgt_batch, tgt_mask = pad_sequences(tgts)
 
-    return Batch(src=src_batch,
-                 tgt=tgt_batch,
-                 src_mask=src_mask,
-                 tgt_mask=tgt_mask,)
+    return Batch(src=src_batch.to(device),
+                 tgt=tgt_batch.to(device),
+                 src_mask=src_mask.to(device),
+                 tgt_mask=tgt_mask.to(device),)
 
 
 def build_data_iterator(args, tokenizer, sampler, batch_size, eval=False):
     dataset = load_and_cache_examples(args, tokenizer, eval)
 
     def collate_fn(data):
-        return collate(data)
+        return collate(data, args.device)
 
     iterator = DataLoader(dataset, sampler=sampler(dataset), batch_size=batch_size, collate_fn=collate_fn,)
 
@@ -318,8 +318,6 @@ def train(args, model, tokenizer):
                 continue
 
             inputs, labels = batch.src, batch.tgt
-            inputs = inputs.to(args.device)
-            labels = labels.to(args.device)
             model.train()
             outputs = model(inputs,
                             labels,
@@ -420,8 +418,6 @@ def evaluate(args, model, tokenizer, prefix=""):
 
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         inputs, labels = batch.src, batch.tgt
-        inputs = inputs.to(args.device)
-        labels = labels.to(args.device)
 
         with torch.no_grad():
             outputs = model(inputs,
