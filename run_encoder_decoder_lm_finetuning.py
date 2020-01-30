@@ -1,3 +1,8 @@
+Work on this, make it work.
+Run it on a small dataset first, check it saves checkpoints alright
+and then run the run_encoder_decoder_generation.
+so the whole flow works.
+
 # coding=utf-8
 # Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
 # Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
