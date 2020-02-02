@@ -60,6 +60,7 @@ from docred import convert_examples_to_features
 from docred import output_modes
 from docred import processors
 from docred import SPECIAL_TOKENS
+from models.mtb import RobertaForRelationClassification
 
 
 try:
@@ -91,6 +92,7 @@ MODEL_CLASSES = {
     "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
     "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
+    "roberta-rc": (RobertaConfig, RobertaForRelationClassification, RobertaTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
     "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
     "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
@@ -211,6 +213,8 @@ def train(args, train_dataset, model, tokenizer):
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                 )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+            if args.task_name == "docred":
+                inputs["markers_mask"] = batch[4]
             outputs = model(**inputs)
             loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
 
@@ -327,6 +331,8 @@ def evaluate(args, model, tokenizer, prefix=""):
                     inputs["token_type_ids"] = (
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                     )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+                if args.task_name == "docred":
+                    inputs["markers_mask"] = batch[4]
                 outputs = model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
 
@@ -406,12 +412,13 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
     all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    all_markers_mask = torch.tensor([f.markers_mask for f in features], dtype=torch.bool) if args.task_name == "docred" else None
     if output_mode == "classification":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.float)
 
-    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)
+    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_markers_mask)
     return dataset
 
 

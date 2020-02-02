@@ -122,8 +122,10 @@ class DocREDProcessor(DataProcessor):
         shuffle(examples)
         positive_examples = get_first_num_examples("1", num_positive)
         negative_examples = get_first_num_examples("0", num_negative)
+        pos_and_neg_examples = positive_examples + negative_examples
+        shuffle(pos_and_neg_examples)
 
-        return positive_examples + negative_examples
+        return pos_and_neg_examples
 
     def _in_negative_relations(self, example, relation):
         """
@@ -131,21 +133,22 @@ class DocREDProcessor(DataProcessor):
         Don't need to use the validate method we don't need to log bad examples
         from possible negative examples.
         """
+        def same_entity_types():
+            ent1_type = DocREDUtils.entity_from_relation(example, relation, 'h')[0]['type']
+            ent2_type = DocREDUtils.entity_from_relation(example, relation, 't')[0]['type']
+
+            return {ent1_type, ent2_type} == entity_types
+
         try:
             entity_types = {CLASS_MAPPING[self.positive_label]['e1_type'],
                             CLASS_MAPPING[self.positive_label]['e2_type']}
-            def same_entity_types():
-                ent1_type = DocREDUtils.entity_from_relation(example, relation, 'h')[0]['type']
-                ent2_type = DocREDUtils.entity_from_relation(example, relation, 't')[0]['type']
-                
-                return {ent1_type, ent2_type} == entity_types
 
             return same_entity_types()
         except IndexError as _:
             return False
 
     def _positive_relation(self, relation):
-        return relation['r'] == self.positive_label
+        return relation['r'] == CLASS_MAPPING[self.positive_label]['id']
 
     def _relation_flag(self, relation):
         return "1" if self._positive_relation(relation) else "0"
@@ -226,6 +229,9 @@ def convert_examples_to_features(
             attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
             token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
 
+        start_markers_ids = [tokenizer.convert_tokens_to_ids(t) for t in [START_E1, START_E2]]
+        markers_mask = [1 if t in start_markers_ids else 0 for t in input_ids]
+
         assert len(input_ids) == max_length, "Error with input length {} vs {}".format(len(input_ids), max_length)
         assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(
             len(attention_mask), max_length
@@ -247,15 +253,21 @@ def convert_examples_to_features(
             logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
             logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
             logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+            logger.info("markers_mask: %s" % " ".join([str(x) for x in markers_mask]))
             logger.info("label: %s (id = %d)" % (example.label, label))
 
         features.append(
-            InputFeatures(
-                input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, label=label
+            DocREDInputFeatures(
+                input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, markers_mask=markers_mask, label=label
             )
         )
 
     return features
+
+class DocREDInputFeatures(InputFeatures):
+    def __init__(self, input_ids, attention_mask=None, token_type_ids=None, markers_mask=None, label=None):
+        super().__init__(input_ids, attention_mask, token_type_ids, label)
+        self.markers_mask = markers_mask
 
 def compute_metrics(task_name, preds, labels):
     assert task_name == "docred"
