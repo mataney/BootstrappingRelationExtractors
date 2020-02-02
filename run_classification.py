@@ -55,10 +55,12 @@ from transformers import (
     XLNetTokenizer,
     get_linear_schedule_with_warmup,
 )
-from transformers import glue_compute_metrics as compute_metrics
-from transformers import glue_convert_examples_to_features as convert_examples_to_features
-from transformers import glue_output_modes as output_modes
-from transformers import glue_processors as processors
+from docred import compute_metrics
+# from transformers import glue_convert_examples_to_features as convert_examples_to_features
+from docred import convert_examples_to_features
+from docred import output_modes
+from docred import processors
+from docred import SPECIAL_TOKENS
 
 
 try:
@@ -360,7 +362,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.local_rank not in [-1, 0] and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    processor = processors[task]()
+    processor = processors[task](args.relation_name)
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
@@ -445,6 +447,27 @@ def main():
         type=str,
         required=True,
         help="The name of the task to train selected in the list: " + ", ".join(processors.keys()),
+    )
+    parser.add_argument(
+        "--relation_name",
+        default=None,
+        type=str,
+        required=True,
+        help="The relation name on which you want to do binary classification",
+    )
+    parser.add_argument(
+        "--num_positive_examples",
+        default=None,
+        type=int,
+        required=True,
+        help="The number of positive examples allowed for classification",
+    )
+    parser.add_argument(
+        "--num_negative_examples",
+        default=None,
+        type=int,
+        required=True,
+        help="The number of negative examples allowed for classification",
     )
     parser.add_argument(
         "--output_dir",
@@ -600,7 +623,7 @@ def main():
     args.task_name = args.task_name.lower()
     if args.task_name not in processors:
         raise ValueError("Task not found: %s" % (args.task_name))
-    processor = processors[args.task_name]()
+    processor = processors[args.task_name](args.relation_name)
     args.output_mode = output_modes[args.task_name]
     label_list = processor.get_labels()
     num_labels = len(label_list)
@@ -622,12 +645,14 @@ def main():
         do_lower_case=args.do_lower_case,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
+    tokenizer.add_tokens(SPECIAL_TOKENS)
     model = model_class.from_pretrained(
         args.model_name_or_path,
         from_tf=bool(".ckpt" in args.model_name_or_path),
         config=config,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
+    model.resize_token_embeddings(len(tokenizer))
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -663,12 +688,16 @@ def main():
         # Load a trained model and vocabulary that you have fine-tuned
         model = model_class.from_pretrained(args.output_dir)
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+        tokenizer.add_tokens(SPECIAL_TOKENS)
+        model.resize_token_embeddings(len(tokenizer))
         model.to(args.device)
 
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+        tokenizer.add_tokens(SPECIAL_TOKENS)
+        model.resize_token_embeddings(len(tokenizer))
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
