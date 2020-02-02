@@ -56,7 +56,6 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 from docred import compute_metrics
-# from transformers import glue_convert_examples_to_features as convert_examples_to_features
 from docred import convert_examples_to_features
 from docred import output_modes
 from docred import processors
@@ -362,7 +361,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.local_rank not in [-1, 0] and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    processor = processors[task](args.relation_name)
+    processor = processors[task](args.relation_name, args.num_positive_examples, args.num_negative_examples)
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
@@ -623,7 +622,7 @@ def main():
     args.task_name = args.task_name.lower()
     if args.task_name not in processors:
         raise ValueError("Task not found: %s" % (args.task_name))
-    processor = processors[args.task_name](args.relation_name)
+    processor = processors[args.task_name](args.relation_name, args.num_positive_examples, args.num_negative_examples)
     args.output_mode = output_modes[args.task_name]
     label_list = processor.get_labels()
     num_labels = len(label_list)
