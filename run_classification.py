@@ -394,11 +394,12 @@ def load_and_cache_examples(args, task, tokenizer, set_type="train"):
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
         args.data_dir,
-        "cached_{}_{}_{}_{}".format(
+        "cached_{}_{}_{}_{}_{}".format(
             set_type,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
             str(task),
+            str(args.relation_name),
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:

@@ -1,8 +1,7 @@
-from __future__ import annotations
 import json
 import logging
 import os
-from typing import List, Dict, Any, Iterator, Union, Tuple
+from typing import List, Dict, Any, Iterator, Union, Tuple, Type, TypeVar
 
 from collections import defaultdict
 from itertools import permutations
@@ -15,8 +14,7 @@ from docred_config import (START_E1,
                            START_E2,
                            END_E2,
                            SPECIAL_TOKENS,
-                           CLASS_MAPPING,
-                           DEV_TITLES,)
+                           CLASS_MAPPING)
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +22,21 @@ JsonObject = Dict[str, Any]
 SetType = ["train", "dev", "full_dev"] # TODO check if I can do this better
 Relation = Dict[str, Union[str, int, List[int]]] # TODO check if I can do this better
 Entity = Dict[str, Union[str, int, List[int]]] # TODO check if I can do this better
+T = TypeVar('T', bound='DocREDExample')
 
 class DocREDExample(InputExample):
 
-    def __init__(self, guid: str, example_json: JsonObject, relation: Relation, label: str = None) -> None:
-        self.guid = guid
-        self.title = DEV_TITLES.index(example_json['title'])
+    def __init__(self, title: int, example_json: JsonObject, relation: Relation, label: str = None) -> None:
+        self.title = title
         self.text = self._mark_entities(example_json, relation)
         self.h = relation['h']
         self.t = relation['t']
         self.label = label
 
     @classmethod
-    def builder(cls, guid: str, example_json: JsonObject, relation: Relation, label=None) -> DocREDExample:
+    def builder(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> T:
         if cls.validate(example_json, relation):
-            return cls(guid, example_json, relation, label)
+            return cls(title, example_json, relation, label)
         return None
 
     def _mark_entities(self, example_json: JsonObject, relation: Relation) -> str:
@@ -144,27 +142,21 @@ class DocREDProcessor(DataProcessor):
 
     def _create_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples for the training and dev sets."""
-        i = 0
-        for doc in documents:
+        for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
                 if self._positive_relation(relation) or self._in_negative_relations(doc, relation):
-                    guid = "%s-%s" % (set_type, i)
-                    example = DocREDExample.builder(guid, doc, relation, label=self._relation_flag(relation))
+                    example = DocREDExample.builder(title_id, doc, relation, label=self._relation_flag(relation))
                     if example is not None:
                         yield example
-                        i += 1
     
     def _create_all_possible_dev_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples of all possible entities for dev sets"""
-        i = 0
-        for doc in documents:
+        for title_id, doc in enumerate(documents):
             relations = self._create_all_relation_permutations(doc)
             for relation in relations:
-                guid = "%s-%s" % (set_type, i)
-                example = DocREDExample.builder(guid, doc, relation, label=self._relation_flag(relation))
+                example = DocREDExample.builder(title_id, doc, relation, label=self._relation_flag(relation))
                 if example is not None:
                     yield example
-                    i += 1
 
     def _create_all_relation_permutations(self, doc: JsonObject) -> Iterator[Relation]:
         entities_by_sent_id = DocREDUtils.entities_by_sent_id(doc['vertexSet'])
@@ -313,7 +305,6 @@ def convert_examples_to_features(
 
         if ex_index < 5:
             logger.info("*** Example ***")
-            logger.info("guid: %s" % (example.guid))
             logger.info("title: %s" % (example.title))
             logger.info("head: %s" % (example.h))
             logger.info("tail: %s" % (example.t))
