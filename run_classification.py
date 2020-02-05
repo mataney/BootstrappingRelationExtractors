@@ -55,10 +55,14 @@ from transformers import (
     XLNetTokenizer,
     get_linear_schedule_with_warmup,
 )
-from transformers import glue_compute_metrics as compute_metrics
-from transformers import glue_convert_examples_to_features as convert_examples_to_features
-from transformers import glue_output_modes as output_modes
-from transformers import glue_processors as processors
+from docred import compute_metrics
+from docred import convert_examples_to_features
+from docred import output_modes
+from docred import processors
+from docred_config import SPECIAL_TOKENS
+from docred_config import DEV_TITLES
+from docred_config import CLASS_MAPPING
+from models.mtb import RobertaForRelationClassification
 
 
 try:
@@ -90,6 +94,7 @@ MODEL_CLASSES = {
     "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
     "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
+    "roberta-rc": (RobertaConfig, RobertaForRelationClassification, RobertaTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
     "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
     "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
@@ -210,6 +215,8 @@ def train(args, train_dataset, model, tokenizer):
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                 )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+            if args.task_name == "docred":
+                inputs["markers_mask"] = batch[4]
             outputs = model(**inputs)
             loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
 
@@ -287,14 +294,14 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, tokenizer, prefix=""):
+def evaluate(args, model, tokenizer, prefix="", label_list=None):
     # Loop to handle MNLI double evaluation (matched, mis-matched)
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + "-MM") if args.task_name == "mnli" else (args.output_dir,)
 
     results = {}
     for eval_task, eval_output_dir in zip(eval_task_names, eval_outputs_dirs):
-        eval_dataset = load_and_cache_examples(args, eval_task, tokenizer, evaluate=True)
+        eval_dataset = load_and_cache_examples(args, eval_task, tokenizer, "dev" if label_list is None else "full_dev")
 
         if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(eval_output_dir)
@@ -316,6 +323,9 @@ def evaluate(args, model, tokenizer, prefix=""):
         nb_eval_steps = 0
         preds = None
         out_label_ids = None
+        titles = None
+        relation_heads = None
+        relation_tails = None
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             model.eval()
             batch = tuple(t.to(args.device) for t in batch)
@@ -326,6 +336,8 @@ def evaluate(args, model, tokenizer, prefix=""):
                     inputs["token_type_ids"] = (
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                     )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+                if args.task_name == "docred":
+                    inputs["markers_mask"] = batch[4]
                 outputs = model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
 
@@ -337,6 +349,15 @@ def evaluate(args, model, tokenizer, prefix=""):
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+            if label_list is not None:
+                if titles is None:
+                    titles = [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()]
+                    relation_heads = batch[6].detach().cpu().numpy()
+                    relation_tails = batch[7].detach().cpu().numpy()
+                else:
+                    titles = np.append(titles, [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()], axis=0)
+                    relation_heads = np.append(relation_heads, batch[6].detach().cpu().numpy(), axis=0)
+                    relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
         if args.output_mode == "classification":
@@ -353,23 +374,32 @@ def evaluate(args, model, tokenizer, prefix=""):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
+        if label_list is not None:
+            full_eval_results = []
+            for title, h_idx, t_idx, pred in zip(titles, relation_heads, relation_tails, preds):
+                if label_list[pred] == args.relation_name:
+                    relation_id = CLASS_MAPPING[label_list[pred]]['id']
+                    full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id})
+            output_eval_file = os.path.join(eval_output_dir, prefix, "full_eval_results.json")
+            json.dump(full_eval_results, open(output_eval_file, "w"))
+
     return results
 
-
-def load_and_cache_examples(args, task, tokenizer, evaluate=False):
-    if args.local_rank not in [-1, 0] and not evaluate:
+def load_and_cache_examples(args, task, tokenizer, set_type="train"):
+    if args.local_rank not in [-1, 0] and set_type == "train":
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    processor = processors[task]()
+    processor = processors[task](args.relation_name, args.num_positive_examples, args.num_negative_examples)
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
         args.data_dir,
-        "cached_{}_{}_{}_{}".format(
-            "dev" if evaluate else "train",
+        "cached_{}_{}_{}_{}_{}".format(
+            set_type,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
             str(task),
+            str(args.relation_name),
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
@@ -378,12 +408,10 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
         label_list = processor.get_labels()
-        if task in ["mnli", "mnli-mm"] and args.model_type in ["roberta", "xlmroberta"]:
+        if task in ["mnli", "mnli-mm"] and args.model_type in ["roberta", "xlmroberta", "roberta-rc"]:
             # HACK(label indices are swapped in RoBERTa pretrained model)
             label_list[1], label_list[2] = label_list[2], label_list[1]
-        examples = (
-            processor.get_dev_examples(args.data_dir) if evaluate else processor.get_train_examples(args.data_dir)
-        )
+        examples = processor.get_examples_by_set_type(set_type, args.data_dir)
         features = convert_examples_to_features(
             examples,
             tokenizer,
@@ -398,7 +426,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(features, cached_features_file)
 
-    if args.local_rank == 0 and not evaluate:
+    if args.local_rank == 0 and set_type == "train":
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
     # Convert to Tensors and build dataset
@@ -409,9 +437,14 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.float)
-
-    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)
-    return dataset
+    if args.task_name == "docred":
+        all_markers_mask = torch.tensor([f.markers_mask for f in features], dtype=torch.bool)
+        all_titles = torch.tensor([f.title for f in features], dtype=torch.long)
+        all_h = torch.tensor([f.h for f in features], dtype=torch.long)
+        all_t = torch.tensor([f.t for f in features], dtype=torch.long)
+        return TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_markers_mask, all_titles, all_h, all_t)
+    
+    return TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)
 
 
 def main():
@@ -447,6 +480,27 @@ def main():
         help="The name of the task to train selected in the list: " + ", ".join(processors.keys()),
     )
     parser.add_argument(
+        "--relation_name",
+        default=None,
+        type=str,
+        required=True,
+        help="The relation name on which you want to do binary classification",
+    )
+    parser.add_argument(
+        "--num_positive_examples",
+        default=None,
+        type=int,
+        required=True,
+        help="The number of positive examples allowed for classification",
+    )
+    parser.add_argument(
+        "--num_negative_examples",
+        default=None,
+        type=int,
+        required=True,
+        help="The number of negative examples allowed for classification",
+    )
+    parser.add_argument(
         "--output_dir",
         default=None,
         type=str,
@@ -479,6 +533,7 @@ def main():
     )
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_full_eval", action="store_true", help="Whether to run eval over all possible relatoins.")
     parser.add_argument(
         "--evaluate_during_training", action="store_true", help="Rul evaluation during training at each logging step.",
     )
@@ -600,7 +655,7 @@ def main():
     args.task_name = args.task_name.lower()
     if args.task_name not in processors:
         raise ValueError("Task not found: %s" % (args.task_name))
-    processor = processors[args.task_name]()
+    processor = processors[args.task_name](args.relation_name, args.num_positive_examples, args.num_negative_examples)
     args.output_mode = output_modes[args.task_name]
     label_list = processor.get_labels()
     num_labels = len(label_list)
@@ -622,12 +677,14 @@ def main():
         do_lower_case=args.do_lower_case,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
+    tokenizer.add_tokens(SPECIAL_TOKENS)
     model = model_class.from_pretrained(
         args.model_name_or_path,
         from_tf=bool(".ckpt" in args.model_name_or_path),
         config=config,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
+    model.resize_token_embeddings(len(tokenizer))
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -638,7 +695,7 @@ def main():
 
     # Training
     if args.do_train:
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, evaluate=False)
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer)
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
@@ -663,12 +720,16 @@ def main():
         # Load a trained model and vocabulary that you have fine-tuned
         model = model_class.from_pretrained(args.output_dir)
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+        tokenizer.add_tokens(SPECIAL_TOKENS)
+        model.resize_token_embeddings(len(tokenizer))
         model.to(args.device)
 
     # Evaluation
     results = {}
-    if args.do_eval and args.local_rank in [-1, 0]:
+    if (args.do_eval or args.do_full_eval) and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+        tokenizer.add_tokens(SPECIAL_TOKENS)
+        model.resize_token_embeddings(len(tokenizer))
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
@@ -682,9 +743,14 @@ def main():
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
-            result = evaluate(args, model, tokenizer, prefix=prefix)
-            result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
-            results.update(result)
+            if args.do_eval:
+                result = evaluate(args, model, tokenizer, prefix=prefix)
+                result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
+                results.update(result)
+            if args.do_full_eval:
+                result = evaluate(args, model, tokenizer, prefix=prefix, label_list=label_list)
+                result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
+                results.update(result)
 
     return results
 
