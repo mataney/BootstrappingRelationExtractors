@@ -59,7 +59,7 @@ from docred import compute_metrics
 from docred import convert_examples_to_features
 from docred import output_modes
 from docred import processors
-from docred import SPECIAL_TOKENS
+from docred_config import SPECIAL_TOKENS
 from docred_config import DEV_TITLES
 from docred_config import CLASS_MAPPING
 from models.mtb import RobertaForRelationClassification
@@ -526,7 +526,7 @@ def main():
     )
     parser.add_argument(
         "--max_seq_length",
-        default=64,
+        default=128,
         type=int,
         help="The maximum total input sequence length after tokenization. Sequences longer "
         "than this will be truncated, sequences shorter will be padded.",

@@ -2,7 +2,7 @@ from docred import DocREDExample, DocREDUtils
 
 doc = {
     'vertexSet':
-        [[{'name': 'Lark Force', 'pos': [0, 2], 'sent_id': 0, 'type': 'ORG'}], [{'name': 'Australian Army', 'pos': [4, 6], 'sent_id': 0, 'type': 'ORG'}], [{'pos': [9, 11], 'type': 'TIME', 'sent_id': 0, 'name': 'March 1941'}], [{'name': 'World War II', 'pos': [12, 15], 'sent_id': 0, 'type': 'MISC'}], [{'name': 'New Britain', 'pos': [18, 20], 'sent_id': 0, 'type': 'LOC'}], [{'name': 'New Ireland', 'pos': [21, 23], 'sent_id': 0, 'type': 'LOC'}]], 
+        [[{'name': 'Lark Force', 'pos': [0, 2], 'sent_id': 0, 'type': 'ORG'}, {'name': 'Lark Force', 'pos': [0, 2], 'sent_id': 0, 'type': 'ORG'}], [{'name': 'Australian Army', 'pos': [4, 6], 'sent_id': 0, 'type': 'ORG'}], [{'pos': [9, 11], 'type': 'TIME', 'sent_id': 0, 'name': 'March 1941'}], [{'name': 'World War II', 'pos': [12, 15], 'sent_id': 0, 'type': 'MISC'}], [{'name': 'New Britain', 'pos': [18, 20], 'sent_id': 0, 'type': 'LOC'}], [{'name': 'New Ireland', 'pos': [21, 23], 'sent_id': 0, 'type': 'LOC'}]], 
     'labels':
         [{'r': 'P607', 'h': 1, 't': 3, 'evidence': [0]},
          {'r': 'P571', 'h': 0, 't': 2, 'evidence': [0]},
@@ -12,8 +12,8 @@ doc = {
         [['Lark', 'Force', 'was', 'an', 'Australian', 'Army', 'formation', 'established', 'in', 'March', '1941', 'during', 'World', 'War', 'II', 'for', 'service', 'in', 'New', 'Britain', 'and', 'New', 'Ireland', '.']]
     }
 
-entities_by_sent_id = {0: [0, 1, 2, 3, 4, 5]}
-relations_by_entities = {(1, 3): 'P607', (0, 2): 'P571', (0, 3): 'P607'}
+entities_by_sent_id = {0: {0, 1, 2, 3, 4, 5}}
+relations_by_entities = {(1, 3): {'r': 'P607', 'h': 1, 't': 3, 'evidence': [0]}, (0, 2): {'r': 'P571', 'h': 0, 't': 2, 'evidence': [0]}, (0, 3): {'r': 'P607', 'h': 0, 't': 3, 'evidence': [0]}}
 
 class TestDocREDExample:
     def test_validate_returns_true(self):

@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from typing import List, Dict, Any, Iterator, Union, Tuple, Type, TypeVar
+from typing import List, Dict, Any, Iterator, Tuple, Type, TypeVar
+from typing_extensions import Literal, TypedDict
 
 from collections import defaultdict
 from itertools import permutations
@@ -13,15 +14,14 @@ from docred_config import (START_E1,
                            END_E1,
                            START_E2,
                            END_E2,
-                           SPECIAL_TOKENS,
                            CLASS_MAPPING)
 
 logger = logging.getLogger(__name__)
 
 JsonObject = Dict[str, Any]
-SetType = ["train", "dev", "full_dev"] # TODO check if I can do this better
-Relation = Dict[str, Union[str, int, List[int]]] # TODO check if I can do this better
-Entity = Dict[str, Union[str, int, List[int]]] # TODO check if I can do this better
+SetType = Literal["train", "dev", "full_dev"]
+Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=List[int])
+Entity = TypedDict('Entity', name=str, pos=List[int], sent_id=int, type=str)
 T = TypeVar('T', bound='DocREDExample')
 
 class DocREDExample(InputExample):
@@ -34,7 +34,7 @@ class DocREDExample(InputExample):
         self.label = label
 
     @classmethod
-    def builder(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> T:
+    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> T:
         if cls.validate(example_json, relation):
             return cls(title, example_json, relation, label)
         return None
@@ -94,17 +94,17 @@ class DocREDUtils:
 
     @staticmethod
     def entities_by_sent_id(entities: List[Entity]) -> Dict[int, List[int]]:
-        grouped = defaultdict(list)
+        grouped = defaultdict(set)
         for i, ent_instances in enumerate(entities):
             for ent in ent_instances:
-                grouped[ent['sent_id']].append(i)
+                grouped[ent['sent_id']].add(i)
         return grouped
 
     @staticmethod
     def relations_by_entities(relations: List[Relation]) -> Dict[Tuple[int, int], str]:
         grouped = defaultdict(list)
         for relation in relations:
-            grouped[relation['h'], relation['t']] = relation['r']
+            grouped[relation['h'], relation['t']] = relation
         return grouped
 
 class DocREDProcessor(DataProcessor):
@@ -133,19 +133,19 @@ class DocREDProcessor(DataProcessor):
     def get_dev_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
-        return self.sample_examples(examples, self.num_negative, self.num_negative)
+        return self.sample_examples(examples, self.num_negative, self.num_negative, eval=True)
 
     def get_all_possible_dev_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
-        examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
+        examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "full_dev")
         return list(examples)
 
     def _create_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
-                if self._positive_relation(relation) or self._in_negative_relations(doc, relation):
-                    example = DocREDExample.builder(title_id, doc, relation, label=self._relation_flag(relation))
+                if self._positive_relation(relation) or self._same_entity_types_relation(doc, relation):
+                    example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
                     if example is not None:
                         yield example
     
@@ -154,7 +154,7 @@ class DocREDProcessor(DataProcessor):
         for title_id, doc in enumerate(documents):
             relations = self._create_all_relation_permutations(doc)
             for relation in relations:
-                example = DocREDExample.builder(title_id, doc, relation, label=self._relation_flag(relation))
+                example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
                 if example is not None:
                     yield example
 
@@ -163,8 +163,11 @@ class DocREDProcessor(DataProcessor):
         relations_by_entities = DocREDUtils.relations_by_entities(doc['labels'])
         for line, entities in entities_by_sent_id.items():
             for perm in permutations(entities, 2):
-                relation = relations_by_entities[perm] if perm in relations_by_entities else 'NOTA'
-                yield {'r': relation, 'h': perm[0], 't': perm[1], 'evidence': [line]}
+                relation_name = relations_by_entities[perm]['r'] if perm in relations_by_entities else 'NOTA'
+                relation_evidence = relations_by_entities[perm]['evidence'] if perm in relations_by_entities else [line]
+                relation = {'r': relation_name, 'h': perm[0], 't': perm[1], 'evidence': relation_evidence}
+                if self._same_entity_types_relation(doc, relation):
+                    yield relation
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""
@@ -176,33 +179,38 @@ class DocREDProcessor(DataProcessor):
         with open(input_file, "r", encoding="utf-8") as f:
             return list(json.load(f))
 
-    def sample_examples(self, examples: List[JsonObject], num_positive: int = None, num_negative: int = None) -> List[DocREDExample]:
+    def sample_examples(self, examples: List[JsonObject], num_positive: int = None, num_negative: int = None, eval: bool = False) -> List[DocREDExample]:
         def get_first_num_examples(label, max_num):
             examples_in_label = [e for e in examples if e.label == label]
             if max_num is None:
                 return examples_in_label
             return examples_in_label[:max_num]
-        
+
         examples = list(examples)
-        shuffle(examples)
+        if not eval:
+            shuffle(examples)
         positive_examples = get_first_num_examples(self.positive_label, num_positive)
         negative_examples = get_first_num_examples("NOTA", num_negative)
         pos_and_neg_examples = positive_examples + negative_examples
-        shuffle(pos_and_neg_examples)
+        if not eval:
+            shuffle(pos_and_neg_examples)
 
         return pos_and_neg_examples
 
-    def _in_negative_relations(self, example_json: JsonObject, relation: Relation) -> bool:
+    def _same_entity_types_relation(self, example_json: JsonObject, relation: Relation) -> bool:
         """
         The try/catch essentially does the same the as in DocREDExample.validate.
         Don't need to use the validate method we don't need to log bad examples
         from possible negative examples.
         """
         def same_entity_types():
-            ent1_type = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')[0]['type']
-            ent2_type = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')[0]['type']
+            if not DocREDExample.validate(example_json, relation):
+                return False
 
-            return {ent1_type, ent2_type} == entity_types
+            ent1 = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')
+            ent2 = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')
+
+            return {ent1[0]['type'], ent2[0]['type']} == entity_types
 
         try:
             entity_types = {CLASS_MAPPING[self.positive_label]['e1_type'],
@@ -215,7 +223,7 @@ class DocREDProcessor(DataProcessor):
     def _positive_relation(self, relation: Relation) -> bool:
         return relation['r'] == CLASS_MAPPING[self.positive_label]['id']
 
-    def _relation_flag(self, relation: Relation) -> str:
+    def _relation_label(self, relation: Relation) -> str:
         return self.positive_label if self._positive_relation(relation) else "NOTA"
 
 #This is a copy of glue_convert_examples_to_features with minor changes
@@ -285,7 +293,7 @@ def convert_examples_to_features(
         start_markers_ids = [tokenizer.convert_tokens_to_ids(t) for t in [START_E1, START_E2]]
         markers_mask = [1 if t in start_markers_ids else 0 for t in input_ids]
         if sum(markers_mask) != 2:
-            logger.info("Text is truncated and not all entities are made it.")
+            logger.info("Text is truncated and not all entities have made it.")
             continue
 
         assert len(input_ids) == max_length, "Error with input length {} vs {}".format(len(input_ids), max_length)
