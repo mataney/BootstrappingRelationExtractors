@@ -364,7 +364,7 @@ def evaluate(args, model, tokenizer, prefix="", label_list=None):
             preds = np.argmax(preds, axis=1)
         elif args.output_mode == "regression":
             preds = np.squeeze(preds)
-        result = compute_metrics(eval_task, preds, out_label_ids)
+        result = compute_metrics(eval_task, preds, out_label_ids, int(not label_list.index('NOTA')))
         results.update(result)
 
         output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")

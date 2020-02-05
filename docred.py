@@ -1,15 +1,15 @@
+from collections import defaultdict
 import json
+from itertools import permutations
 import logging
 import os
+from random import shuffle
 from typing import List, Dict, Any, Iterator, Tuple, Type, TypeVar
 from typing_extensions import Literal, TypedDict
 
-from collections import defaultdict
-from itertools import permutations
-from random import shuffle
+from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from transformers.data.processors.utils import DataProcessor, InputExample, InputFeatures
-from transformers.data.metrics import acc_and_f1
 from docred_config import (START_E1,
                            END_E1,
                            START_E2,
@@ -353,10 +353,27 @@ class DocREDInputFeatures(InputFeatures):
         self.h = h
         self.t = t
 
-def compute_metrics(task_name, preds, labels):
+def compute_metrics(task_name, preds, labels, positive_label):
     assert task_name == "docred"
     assert len(preds) == len(labels)
-    return acc_and_f1(preds, labels)
+    return f1_ignore_negative_class(preds, labels, positive_label)
+
+def simple_accuracy(preds, labels):
+    return (preds == labels).mean()
+
+def f1_ignore_negative_class(preds, labels, positive_label):
+    f1 = f1_score(y_true=labels, y_pred=preds)
+    p, r, f, _ = precision_recall_fscore_support(y_true=labels,
+                                                            y_pred=preds,
+                                                            pos_label=positive_label,
+                                                            average='binary')
+
+    return {
+        "p": p,
+        "r": r,
+        "f1": f,
+        "f1_do_not_ignore_negative_class": f1,
+    }
 
 output_modes = {"docred": "classification"}
 
