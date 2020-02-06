@@ -24,9 +24,9 @@ class RCTransformer(torch.nn.Module):
     def forward(self, input_ids, token_type_ids=None,
                 attention_mask=None,
                 labels=None,
-                entstarts=None):
+                markers_mask=None):
 
-        assert entstarts is not None
+        assert markers_mask is not None
 
         transformer_outputs = self.transformer(input_ids, token_type_ids=token_type_ids,
                                                attention_mask=attention_mask,
@@ -34,18 +34,20 @@ class RCTransformer(torch.nn.Module):
         output = transformer_outputs[0]
 
         batched_cat = []
+        entstarts = []
+        for i in range(markers_mask.size(0)):
+            entstarts.append([i for i, v in enumerate(markers_mask[i]) if v])
         for i, (start_ent1, start_ent2) in enumerate(entstarts):
             batched_cat.append(output[i, [start_ent1, start_ent2]].view(-1))
         output = torch.stack(batched_cat)
 
         logits = self.logits_proj(output)
 
-        outputs = logits
+        outputs = (logits,)
 
         if labels is not None:
             loss_fct = CrossEntropyLoss(self.class_weights)
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-            # outputs = (loss,) + outputs
-            return loss
+            outputs = (loss,) + outputs
 
         return outputs

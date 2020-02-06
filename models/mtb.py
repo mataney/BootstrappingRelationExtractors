@@ -54,7 +54,7 @@ class RobertaForRelationClassification(BertPreTrainedModel):
 
 class MTBClassificationHead(nn.Module):
     """
-    This is similar to MTBClassificationHead only taking the relevant markers 
+    This is similar to MTBClassificationHead only taking the relevant markers
     instead of the <s> token.
     """
 

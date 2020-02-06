@@ -68,14 +68,14 @@ class DocREDExample(InputExample):
 
     @staticmethod
     def validate(example_json: JsonObject, relation: Relation) -> bool:
+        if DocREDUtils.one_sent_relation(relation):
+            logger.info("Skipping example: evidence is longer than 1 sentence.")
+            return False
         if not DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')):
             logger.info("Problem in annotation, can't find entity h in %s sent.", relation['evidence'][0])
             return False
         if not DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')):
             logger.info("Problem in annotation, can't find entity t in %s sent.", relation['evidence'][0])
-            return False
-        if DocREDUtils.longer_than_one_sent(relation):
-            logger.info("Skipping example: evidence is longer than 1 sentence.")
             return False
         return True
 
@@ -89,8 +89,8 @@ class DocREDUtils:
         return len(entity) != 0
 
     @staticmethod
-    def longer_than_one_sent(relation: Relation) -> bool:
-        return len(relation['evidence']) > 1
+    def one_sent_relation(relation: Relation) -> bool:
+        return len(relation['evidence']) != 1
 
     @staticmethod
     def entities_by_sent_id(entities: List[Entity]) -> Dict[int, List[int]]:
@@ -133,7 +133,7 @@ class DocREDProcessor(DataProcessor):
     def get_dev_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
-        return self.sample_examples(examples, self.num_negative, self.num_negative, eval=True)
+        return self.sample_examples(examples, self.num_positive, self.num_negative, eval=True)
 
     def get_all_possible_dev_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
