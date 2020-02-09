@@ -169,7 +169,7 @@ class DocREDProcessor(DataProcessor):
                 relation_name = relations_by_entities[perm]['r'] if perm in relations_by_entities else 'NOTA'
                 relation_evidence = relations_by_entities[perm]['evidence'] if perm in relations_by_entities else [line]
                 relation = {'r': relation_name, 'h': perm[0], 't': perm[1], 'evidence': relation_evidence}
-                if self.type_independent_neg_sample or self._same_entity_types_relation(doc, relation):
+                if self._same_entity_types_relation(doc, relation):
                     yield relation
 
     def get_labels(self) -> List[str]:
