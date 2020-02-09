@@ -265,7 +265,7 @@ def train(args, train_dataset, model, tokenizer):
                             n_no_improve += 1
                         logger.info("number of not improved %s", str(n_no_improve))
 
-                        if n_no_improve > args.patience:
+                        if n_no_improve >= args.patience:
                             patience_ended = True
 
                     loss_scalar = (tr_loss - logging_loss) / args.logging_steps

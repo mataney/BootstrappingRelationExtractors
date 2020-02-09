@@ -24,6 +24,8 @@ Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=List[int])
 Entity = TypedDict('Entity', name=str, pos=List[int], sent_id=int, type=str)
 T = TypeVar('T', bound='DocREDExample')
 
+NEGATIVE_LABEL = "NOTA"
+
 class DocREDExample(InputExample):
 
     def __init__(self, title: int, example_json: JsonObject, relation: Relation, label: str = None) -> None:
@@ -69,13 +71,13 @@ class DocREDExample(InputExample):
     @staticmethod
     def validate(example_json: JsonObject, relation: Relation) -> bool:
         if DocREDUtils.one_sent_relation(relation):
-            logger.info("Skipping example: evidence is longer than 1 sentence.")
+            # logger.info("Skipping example: evidence is longer than 1 sentence.")
             return False
         if not DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')):
-            logger.info("Problem in annotation, can't find entity h in %s sent.", relation['evidence'][0])
+            # logger.info("Problem in annotation, can't find entity h in %s sent.", relation['evidence'][0])
             return False
         if not DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')):
-            logger.info("Problem in annotation, can't find entity t in %s sent.", relation['evidence'][0])
+            # logger.info("Problem in annotation, can't find entity t in %s sent.", relation['evidence'][0])
             return False
         return True
 
@@ -144,7 +146,7 @@ class DocREDProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
-                if self._positive_relation(relation) or self._same_entity_types_relation(doc, relation):
+                if True or self._positive_relation(relation) or self._same_entity_types_relation(doc, relation):
                     example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
                     if example is not None:
                         yield example
@@ -171,7 +173,7 @@ class DocREDProcessor(DataProcessor):
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""
-        return [self.positive_label, "NOTA"]
+        return [self.positive_label, NEGATIVE_LABEL]
 
     @classmethod
     def _read_json(cls, input_file: str) -> List[JsonObject]:
@@ -190,7 +192,7 @@ class DocREDProcessor(DataProcessor):
         if not eval:
             shuffle(examples)
         positive_examples = get_first_num_examples(self.positive_label, num_positive)
-        negative_examples = get_first_num_examples("NOTA", num_negative)
+        negative_examples = get_first_num_examples(NEGATIVE_LABEL, num_negative)
         pos_and_neg_examples = positive_examples + negative_examples
         if not eval:
             shuffle(pos_and_neg_examples)
@@ -224,7 +226,7 @@ class DocREDProcessor(DataProcessor):
         return relation['r'] == CLASS_MAPPING[self.positive_label]['id']
 
     def _relation_label(self, relation: Relation) -> str:
-        return self.positive_label if self._positive_relation(relation) else "NOTA"
+        return self.positive_label if self._positive_relation(relation) else NEGATIVE_LABEL
 
 #This is a copy of glue_convert_examples_to_features with minor changes
 def convert_examples_to_features(
