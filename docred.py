@@ -110,13 +110,13 @@ class DocREDUtils:
         return grouped
 
 class DocREDProcessor(DataProcessor):
-    def __init__(self, relation_name: str, num_positive: int = None, num_negative: int = None, neg_examples_same_ner: bool = True) -> None:
+    def __init__(self, relation_name: str, num_positive: int = None, num_negative: int = None, type_independent_neg_sample: bool = True) -> None:
         super().__init__()
         assert relation_name in CLASS_MAPPING
         self.positive_label = relation_name
         self.num_positive = num_positive
         self.num_negative = num_negative
-        self.neg_examples_same_ner = neg_examples_same_ner
+        self.type_independent_neg_sample = type_independent_neg_sample
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
         if set_type == "train":
@@ -147,7 +147,7 @@ class DocREDProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
-                if (self._positive_relation(relation)) or (self.neg_examples_same_ner or self._same_entity_types_relation(doc, relation)):
+                if (self._positive_relation(relation)) or (self.type_independent_neg_sample or self._same_entity_types_relation(doc, relation)):
                     example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
                     if example is not None:
                         yield example
@@ -169,7 +169,7 @@ class DocREDProcessor(DataProcessor):
                 relation_name = relations_by_entities[perm]['r'] if perm in relations_by_entities else 'NOTA'
                 relation_evidence = relations_by_entities[perm]['evidence'] if perm in relations_by_entities else [line]
                 relation = {'r': relation_name, 'h': perm[0], 't': perm[1], 'evidence': relation_evidence}
-                if self.neg_examples_same_ner or self._same_entity_types_relation(doc, relation):
+                if self.type_independent_neg_sample or self._same_entity_types_relation(doc, relation):
                     yield relation
 
     def get_labels(self) -> List[str]:
