@@ -411,7 +411,7 @@ def load_and_cache_examples(args, task, tokenizer, set_type="train"):
     if args.local_rank not in [-1, 0] and set_type == "train":
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    processor = processors[task](args.relation_name, args.num_positive_examples, args.num_negative_examples)
+    processor = processors[task](args.relation_name, args.num_positive_examples, args.num_negative_examples, args.neg_examples_same_ner)
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
@@ -624,6 +624,10 @@ def main():
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
+
+    parser.add_argument("--neg_examples_same_ner",
+                        action="store_true",
+                        help="Whether negative examples should have same entity types")
     args = parser.parse_args()
 
     if (
@@ -680,7 +684,7 @@ def main():
     args.task_name = args.task_name.lower()
     if args.task_name not in processors:
         raise ValueError("Task not found: %s" % (args.task_name))
-    processor = processors[args.task_name](args.relation_name, args.num_positive_examples, args.num_negative_examples)
+    processor = processors[args.task_name](args.relation_name, args.num_positive_examples, args.num_negative_examples, args.neg_examples_same_ner)
     args.output_mode = output_modes[args.task_name]
     label_list = processor.get_labels()
     num_labels = len(label_list)
