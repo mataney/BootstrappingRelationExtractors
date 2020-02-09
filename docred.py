@@ -146,7 +146,7 @@ class DocREDProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
-                if True or self._positive_relation(relation) or self._same_entity_types_relation(doc, relation):
+                if self._positive_relation(relation) or self._same_entity_types_relation(doc, relation):
                     example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
                     if example is not None:
                         yield example
