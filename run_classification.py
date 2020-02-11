@@ -316,14 +316,14 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, tokenizer, prefix="", do_full_eval=False):
+def evaluate(args, model, tokenizer, prefix="", set_type=""):
     # Loop to handle MNLI double evaluation (matched, mis-matched)
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + "-MM") if args.task_name == "mnli" else (args.output_dir,)
 
     results = {}
     for eval_task, eval_output_dir in zip(eval_task_names, eval_outputs_dirs):
-        eval_dataset = load_and_cache_examples(args, eval_task, tokenizer, "full_dev" if do_full_eval else "dev")
+        eval_dataset = load_and_cache_examples(args, eval_task, tokenizer, set_type)
 
         if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(eval_output_dir)
@@ -371,7 +371,7 @@ def evaluate(args, model, tokenizer, prefix="", do_full_eval=False):
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-            if do_full_eval:
+            if 'full' in set_type:
                 if titles is None:
                     titles = [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()]
                     relation_heads = batch[6].detach().cpu().numpy()
@@ -399,7 +399,7 @@ def evaluate(args, model, tokenizer, prefix="", do_full_eval=False):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
-        if do_full_eval:
+        if 'full' in set_type:
             full_eval_results = []
             for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
                 if pred == positive_label_index:
@@ -559,8 +559,9 @@ def main():
         "than this will be truncated, sequences shorter will be padded.",
     )
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
-    parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
-    parser.add_argument("--do_full_eval", action="store_true", help="Whether to run eval over all possible relatoins.")
+    parser.add_argument("--do_eval_train_eval", action="store_true", help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_full_train_eval", action="store_true", help="Whether to run eval over all possible relations on train eval split.")
+    parser.add_argument("--do_full_dev_eval", action="store_true", help="Whether to run eval over all possible relations on dev.")
     parser.add_argument(
         "--evaluate_during_training", action="store_true", help="Rul evaluation during training at each logging step.",
     )
@@ -594,7 +595,7 @@ def main():
         help="If > 0: set total number of training steps to perform. Override num_train_epochs.",
     )
     parser.add_argument("--patience", default=-1, type=int, help="Patience for Early Stopping.")
-    parser.add_argument("--warmup_steps", default=0, type=int, help="Linear warmup over warmup_steps.")
+    parser.add_argument("--warmup_steps", default=100, type=int, help="Linear warmup over warmup_steps.")
 
     parser.add_argument("--logging_steps", type=int, default=500, help="Log every X updates steps.")
     parser.add_argument("--save_steps", type=int, default=500, help="Save checkpoint every X updates steps.")
@@ -762,7 +763,7 @@ def main():
 
     # Evaluation
     results = {}
-    if (args.do_eval or args.do_full_eval) and args.local_rank in [-1, 0]:
+    if (args.do_eval_train_eval or args.do_full_train_eval or args.do_full_dev_eval) and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
         tokenizer.add_tokens(SPECIAL_TOKENS)
         model.resize_token_embeddings(len(tokenizer))
@@ -779,12 +780,11 @@ def main():
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
-            if args.do_eval:
-                result = evaluate(args, model, tokenizer, prefix=prefix)
-                result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
-                results.update(result)
-            if args.do_full_eval:
-                result = evaluate(args, model, tokenizer, prefix=prefix, do_full_eval=True)
+            splits = ['train_eval', 'full_train_eval', 'full_dev_eval']
+            bools = [args.do_eval_train_eval, args.do_full_train_eval, args.do_full_dev_eval]
+            splits = [s for s, b in zip(splits, bools) if b]
+            for split in splits:
+                result = evaluate(args, model, tokenizer, prefix=prefix, set_type=split)
                 result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
                 results.update(result)
 
