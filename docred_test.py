@@ -69,9 +69,6 @@ class TestDocREDUtils:
         entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc3['labels'][0], entities_sents)
         assert entities_and_evidence_sents == [0, 1]
 
-    def test_entities_appear_in_evidence(self):
-        assert DocREDUtils.entities_appear_in_evidence(doc1, doc1['labels'][0])
-
     def test_entity_from_entity_id_passes(self):
         entity_list = DocREDUtils.entity_from_entity_id(doc1['vertexSet'], doc1['labels'][0]['h'], 0)
         assert entity_list == [{'name': 'Microsoft', 'pos': [0, 1], 'sent_id': 0, 'type': 'ORG'},

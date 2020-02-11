@@ -40,8 +40,11 @@ class DocREDExample(InputExample):
         if not isinstance(other, DocREDExample):
             return False
 
-        if self.title == other.title and self.text == other.text and self.h == other.h and \
-            self.t == other.t and self.label == other.label:
+        if self.title == other.title and \
+            self.text == other.text and \
+            self.h == other.h and \
+            self.t == other.t and \
+            self.label == other.label:
             return True
 
         return False
@@ -81,10 +84,6 @@ class DocREDExample(InputExample):
         return entity['pos'][0], entity['pos'][-1]
 
 class DocREDUtils:
-    @staticmethod
-    def entities_appear_in_evidence(json_example: JsonObject, relation: Relation) -> bool:
-        return len(DocREDUtils.evidences_with_entities(json_example, relation)) > 0
-
     @staticmethod
     def evidences_with_entities(json_example: JsonObject, relation: Relation) -> List[int]:
         entities_sents = DocREDUtils._sents_entities_share(json_example, relation)
