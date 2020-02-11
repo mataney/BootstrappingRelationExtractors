@@ -213,11 +213,11 @@ class DocREDProcessor(DataProcessor):
             ent1 = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')
             ent2 = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')
 
-            return {ent1[0]['type'], ent2[0]['type']} == entity_types
+            return [ent1[0]['type'], ent2[0]['type']] == entity_types
 
         try:
-            entity_types = {CLASS_MAPPING[self.positive_label]['e1_type'],
-                            CLASS_MAPPING[self.positive_label]['e2_type']}
+            entity_types = [CLASS_MAPPING[self.positive_label]['e1_type'],
+                            CLASS_MAPPING[self.positive_label]['e2_type']]
 
             return same_entity_types()
         except IndexError as _:
