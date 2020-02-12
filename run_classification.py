@@ -60,9 +60,7 @@ from docred import compute_metrics
 from docred import convert_examples_to_features
 from docred import output_modes
 from docred import processors
-from docred_config import SPECIAL_TOKENS
-from docred_config import DEV_TITLES
-from docred_config import CLASS_MAPPING
+from docred_config import CLASS_MAPPING, SPECIAL_TOKENS, DEV_TITLES, TRAIN_EVAL_TITLES
 from models.mtb import RobertaForRelationClassification
 
 
@@ -316,7 +314,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, tokenizer, prefix="", set_type=""):
+def evaluate(args, model, tokenizer, prefix="", set_type="train_eval"):
     # Loop to handle MNLI double evaluation (matched, mis-matched)
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + "-MM") if args.task_name == "mnli" else (args.output_dir,)
@@ -372,12 +370,13 @@ def evaluate(args, model, tokenizer, prefix="", set_type=""):
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
             if 'full' in set_type:
+                title_names = DEV_TITLES if set_type == 'full_dev_eval' else TRAIN_EVAL_TITLES
                 if titles is None:
-                    titles = [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()]
+                    titles = [title_names[t] for t in batch[5].detach().cpu().numpy()]
                     relation_heads = batch[6].detach().cpu().numpy()
                     relation_tails = batch[7].detach().cpu().numpy()
                 else:
-                    titles = np.append(titles, [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()], axis=0)
+                    titles = np.append(titles, [title_names[t] for t in batch[5].detach().cpu().numpy()], axis=0)
                     relation_heads = np.append(relation_heads, batch[6].detach().cpu().numpy(), axis=0)
                     relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
 
@@ -405,7 +404,7 @@ def evaluate(args, model, tokenizer, prefix="", set_type=""):
                 if pred == positive_label_index:
                     relation_id = CLASS_MAPPING[args.relation_name]['id']
                     full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence[pred].item()})
-            output_eval_file = os.path.join(eval_output_dir, prefix, "full_eval_results.json")
+            output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
             json.dump(full_eval_results, open(output_eval_file, "w"))
 
     return results

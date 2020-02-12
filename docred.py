@@ -109,10 +109,6 @@ class DocREDUtils:
         return [e for e in entities[entity_id] if e['sent_id'] == evidence]
 
     @staticmethod
-    def one_sent_relation(relation: Relation) -> bool:
-        return len(relation['evidence']) == 1
-
-    @staticmethod
     def entities_by_sent_id(entities: List[Entity]) -> Dict[int, List[int]]:
         grouped = defaultdict(set)
         for i, ent_instances in enumerate(entities):
@@ -121,11 +117,25 @@ class DocREDUtils:
         return grouped
 
     @staticmethod
-    def relations_by_entities(relations: List[Relation]) -> Dict[Tuple[int, int], str]:
+    def relations_by_entities(relations: List[Relation]) -> Dict[Tuple[int, int], Relation]:
         grouped = defaultdict(list)
         for relation in relations:
             grouped[relation['h'], relation['t']].append(relation)
         return grouped
+
+    @staticmethod
+    def entities_in_positive_relation_in_this_sent(entities_ids: Tuple[int, int],
+                                                    positive_label_id: str,
+                                                    sent_id: int,
+                                                    relations_by_entities: Dict[Tuple[int, int], Relation]) -> bool:
+
+        if entities_ids not in relations_by_entities:
+            return False
+
+        for rel in relations_by_entities[entities_ids]:
+            if positive_label_id == rel['r'] and sent_id in rel['evidence']:
+                return True
+        return False
 
 class DocREDProcessor(DataProcessor):
     def __init__(self, relation_name: str, num_positive: int = None, num_negative: int = None, type_independent_neg_sample: bool = True) -> None:
@@ -185,21 +195,23 @@ class DocREDProcessor(DataProcessor):
                     yield example
 
     def _create_all_relation_permutations(self, doc: JsonObject) -> Iterator[Relation]:
-        relations = []
-
         entities_by_sent_id = DocREDUtils.entities_by_sent_id(doc['vertexSet'])
         relations_by_entities = DocREDUtils.relations_by_entities(doc['labels'])
         
+        relations = []
+
+        positive_label_id = CLASS_MAPPING[self.positive_label]['id']
         for sent_id, entities_in_sent in entities_by_sent_id.items():
             for perm in permutations(entities_in_sent, 2):
-                if perm in relations_by_entities:
-                    for relation_by_perm in relations_by_entities[perm]:
-                        if sent_id in relation_by_perm['evidence']:
-                            relations.append({'r': relation_by_perm['r'], 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
-                        else:
-                            relations.append({'r': 'NOTA', 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
-                else:
-                    relations.append({'r': 'NOTA', 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
+                relation_id = (
+                    positive_label_id if DocREDUtils.entities_in_positive_relation_in_this_sent(perm,
+                                                                                                positive_label_id,
+                                                                                                sent_id,
+                                                                                                relations_by_entities)
+                    else NEGATIVE_LABEL
+                )
+                relations.append({'r': relation_id, 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
+
 
         for relation in relations:
             if self._same_entity_types_relation(relation, doc['vertexSet']):

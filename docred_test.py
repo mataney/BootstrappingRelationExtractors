@@ -44,6 +44,19 @@ doc3 = {
     'sents': [['John', 'married', 'Mary'], ['John', 'is', 'Mary', "'s", 'husband']]
 }
 
+doc4 = {
+    'vertexSet': [
+        [{'name': 'Microsoft', 'pos': [2, 3], 'sent_id': 0, 'type': 'ORG'}],
+        [{'name': 'Paul', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}],
+    ],
+    'labels': [
+        {'r': 'P112', 'h': 0, 't': 1, 'evidence': [0]},
+        {'r': 'P488', 'h': 0, 't': 1, 'evidence': [0]},
+    ],
+    'title': 'doc4',
+    'sents': [['Paul', 'founded', 'Microsoft']]
+}
+
 # Tests using this variable require the true path to the data files.
 DATA_DIR = '../datasets/DocRED/'
 
@@ -156,9 +169,18 @@ class TestDocREDProcessor:
         assert data[3].t == 0
         assert data[3].label == 'spouse'
 
-    def test_get_all_possible_dev_examples_check_positives(self):
+    def test_create_all_possible_dev_examples_doc4(self):
         processor = DocREDProcessor('founded by')
-        data = processor.get_all_possible_dev_examples(DATA_DIR)
+        data = list(processor._create_all_possible_dev_examples([doc4], None))
+        assert len(data) == 1
+        assert data[0].evidence == 0
+        assert data[0].h == 0
+        assert data[0].t == 1
+        assert data[0].label == 'founded by'
+
+    def test_get_all_possible_eval_examples_check_positives(self):
+        processor = DocREDProcessor('founded by')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'dev')
         relations = [d for d in data if d.label == 'founded by']
         distinct = list(set(relations))
         assert len(relations) == len(distinct)
