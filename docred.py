@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 JsonObject = Dict[str, Any]
 SetType = Literal["train", "dev", "full_dev"]
-Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=List[int])
+Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=int)
 Entity = TypedDict('Entity', name=str, pos=List[int], sent_id=int, type=str)
 T = TypeVar('T', bound='DocREDExample')
 
@@ -28,25 +28,40 @@ NEGATIVE_LABEL = "NOTA"
 
 class DocREDExample(InputExample):
 
-    def __init__(self, title: int, example_json: JsonObject, relation: Relation, label: str = None) -> None:
+    def __init__(self, title: int, example_json: JsonObject, relation: Relation, evidence: int, label: str = None) -> None:
         self.title = title
+        self.evidence = evidence
         self.text = self._mark_entities(example_json, relation)
         self.h = relation['h']
         self.t = relation['t']
         self.label = label
 
+    def __eq__(self, other: Any):
+        if not isinstance(other, DocREDExample):
+            return False
+
+        if self.title == other.title and \
+            self.text == other.text and \
+            self.h == other.h and \
+            self.t == other.t and \
+            self.label == other.label:
+            return True
+
+        return False
+
+    def __hash__(self):
+        return hash((self.title, self.text, self.h, self.t, self.label))
+
     @classmethod
-    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> T:
-        if cls.validate(example_json, relation):
-            return cls(title, example_json, relation, label)
-        return None
+    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> List[T]:
+        for evidence in DocREDUtils.evidences_with_entities(example_json, relation):
+            yield cls(title, example_json, relation, evidence, label)
 
     def _mark_entities(self, example_json: JsonObject, relation: Relation) -> str:
-        e1_start_idx, e1_end_idx = self._relation_span(example_json, relation, 'h')
-        e2_start_idx, e2_end_idx = self._relation_span(example_json, relation, 't')
+        e1_start_idx, e1_end_idx = self._relation_span(example_json['vertexSet'], relation, 'h')
+        e2_start_idx, e2_end_idx = self._relation_span(example_json['vertexSet'], relation, 't')
 
-        evidence = relation['evidence'][0]
-        text = example_json['sents'][evidence].copy()
+        text = example_json['sents'][self.evidence].copy()
 
         if e2_end_idx > e1_end_idx:
             text.insert(e2_end_idx, END_E2)
@@ -61,38 +76,37 @@ class DocREDExample(InputExample):
 
         return ' '.join(text)
 
-    def _relation_span(self, example_json: JsonObject, relation: Relation, side: str) -> [int, int]:
+    def _relation_span(self, entities: List[Entity], relation: Relation, side: str) -> [int, int]:
         """
         Marking the first instance of the entity
         """
-        entity = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, side)[0]
+        entity = DocREDUtils.entity_from_entity_id(entities, relation[side], self.evidence)[0] # Assuming one wrapping will be enough
         return entity['pos'][0], entity['pos'][-1]
-
-    @staticmethod
-    def validate(example_json: JsonObject, relation: Relation) -> bool:
-        if DocREDUtils.one_sent_relation(relation):
-            # logger.info("Skipping example: evidence is longer than 1 sentence.")
-            return False
-        if not DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')):
-            # logger.info("Problem in annotation, can't find entity h in %s sent.", relation['evidence'][0])
-            return False
-        if not DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')):
-            # logger.info("Problem in annotation, can't find entity t in %s sent.", relation['evidence'][0])
-            return False
-        return True
 
 class DocREDUtils:
     @staticmethod
-    def entity_from_relation(entites: List[Entity], relation: Relation, side: str) -> List[Entity]:
-        return [e for e in entites[relation[side]] if e['sent_id'] == relation['evidence'][0]]
+    def evidences_with_entities(json_example: JsonObject, relation: Relation) -> List[int]:
+        entities_sents = DocREDUtils._sents_entities_share(json_example, relation)
+        entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(relation, entities_sents)
+        return entities_and_evidence_sents
 
     @staticmethod
-    def entitiy_found_in_sent(entity) -> bool:
-        return len(entity) != 0
+    def _sents_entities_share(json_example: JsonObject, relation: Relation) -> List[int]:
+        def sents_entity_appears_in(side: str) -> List[int]:
+            return [e['sent_id'] for e in json_example['vertexSet'][relation[side]]]
+
+        head_sents = sents_entity_appears_in('h')
+        tail_sents = sents_entity_appears_in('t')
+
+        return list(set(head_sents) & set(tail_sents))
 
     @staticmethod
-    def one_sent_relation(relation: Relation) -> bool:
-        return len(relation['evidence']) != 1
+    def _sents_entities_and_evidence_share(relation: Relation, entities_sents: List[int]) -> List[int]:
+        return list(set(relation['evidence']) & set(entities_sents))
+
+    @staticmethod
+    def entity_from_entity_id(entities: List[Entity], entity_id: int, evidence: int) -> List[Entity]:
+        return [e for e in entities[entity_id] if e['sent_id'] == evidence]
 
     @staticmethod
     def entities_by_sent_id(entities: List[Entity]) -> Dict[int, List[int]]:
@@ -103,77 +117,112 @@ class DocREDUtils:
         return grouped
 
     @staticmethod
-    def relations_by_entities(relations: List[Relation]) -> Dict[Tuple[int, int], str]:
+    def relations_by_entities(relations: List[Relation]) -> Dict[Tuple[int, int], Relation]:
         grouped = defaultdict(list)
         for relation in relations:
-            grouped[relation['h'], relation['t']] = relation
+            grouped[relation['h'], relation['t']].append(relation)
         return grouped
 
+    @staticmethod
+    def entities_in_positive_relation_in_this_sent(entities_ids: Tuple[int, int],
+                                                    positive_label_id: str,
+                                                    sent_id: int,
+                                                    relations_by_entities: Dict[Tuple[int, int], Relation]) -> bool:
+
+        if entities_ids not in relations_by_entities:
+            return False
+
+        for rel in relations_by_entities[entities_ids]:
+            if positive_label_id == rel['r'] and sent_id in rel['evidence']:
+                return True
+        return False
+
 class DocREDProcessor(DataProcessor):
-    def __init__(self, relation_name: str, num_positive: int = None, num_negative: int = None) -> None:
+    def __init__(self, relation_name: str, num_positive: int = None, num_negative: int = None, type_independent_neg_sample: bool = True) -> None:
         super().__init__()
         assert relation_name in CLASS_MAPPING
         self.positive_label = relation_name
         self.num_positive = num_positive
         self.num_negative = num_negative
+        self.type_independent_neg_sample = type_independent_neg_sample
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
         if set_type == "train":
             return self.get_train_examples(data_dir)
-        elif set_type == "dev":
-            return self.get_dev_examples(data_dir)
-        elif set_type == "full_dev":
-            return self.get_all_possible_dev_examples(data_dir)
+        elif set_type == "train_eval":
+            return self.get_eval_examples(data_dir)
+        elif set_type == "full_train_eval":
+            return self.get_all_possible_eval_examples(data_dir, 'full_train_eval')
+        elif set_type == "full_dev_eval":
+            return self.get_all_possible_eval_examples(data_dir, 'dev')
         else:
             raise Exception("Wrong set_type name")
 
     def get_train_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the train set."""
-        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_annotated.json")), "train")
+        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_split_from_annotated.json")), "train")
         return self.sample_examples(examples, self.num_positive, self.num_negative)
 
-    def get_dev_examples(self, data_dir: str) -> List[DocREDExample]:
+    def get_eval_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
-        examples = self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
+        examples = self._create_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "dev")
         return self.sample_examples(examples, self.num_positive, self.num_negative, eval=True)
 
-    def get_all_possible_dev_examples(self, data_dir: str) -> List[DocREDExample]:
-        """Gets a collection of `InputExample`s for the dev set."""
-        examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "full_dev")
+    def get_all_possible_eval_examples(self, data_dir: str, set_type: str) -> List[DocREDExample]:
+        """Gets a collection of `InputExample`s for the eval set."""
+        if set_type == 'full_train_eval':
+            examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "full_eval_split_from_annotated_eval")
+        else:
+            examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "full_dev_eval")
         return list(examples)
 
     def _create_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
-                if self._positive_relation(relation) or self._same_entity_types_relation(doc, relation):
-                    example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
-                    if example is not None:
+                if self._positive_relation(relation) or self.allow_as_negative(relation, doc['vertexSet']):
+                    examples = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
+                    for example in examples:
                         yield example
-    
+
     def _create_all_possible_dev_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples of all possible entities for dev sets"""
         for title_id, doc in enumerate(documents):
             relations = self._create_all_relation_permutations(doc)
             for relation in relations:
-                example = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
-                if example is not None:
+                examples = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
+                for example in examples:
                     yield example
 
     def _create_all_relation_permutations(self, doc: JsonObject) -> Iterator[Relation]:
         entities_by_sent_id = DocREDUtils.entities_by_sent_id(doc['vertexSet'])
         relations_by_entities = DocREDUtils.relations_by_entities(doc['labels'])
-        for line, entities in entities_by_sent_id.items():
-            for perm in permutations(entities, 2):
-                relation_name = relations_by_entities[perm]['r'] if perm in relations_by_entities else 'NOTA'
-                relation_evidence = relations_by_entities[perm]['evidence'] if perm in relations_by_entities else [line]
-                relation = {'r': relation_name, 'h': perm[0], 't': perm[1], 'evidence': relation_evidence}
-                if self._same_entity_types_relation(doc, relation):
-                    yield relation
+        
+        relations = []
+
+        positive_label_id = CLASS_MAPPING[self.positive_label]['id']
+        for sent_id, entities_in_sent in entities_by_sent_id.items():
+            for perm in permutations(entities_in_sent, 2):
+                relation_id = (
+                    positive_label_id if DocREDUtils.entities_in_positive_relation_in_this_sent(perm,
+                                                                                                positive_label_id,
+                                                                                                sent_id,
+                                                                                                relations_by_entities)
+                    else NEGATIVE_LABEL
+                )
+                relations.append({'r': relation_id, 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
+
+
+        for relation in relations:
+            if self._same_entity_types_relation(relation, doc['vertexSet']):
+                yield relation
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""
         return [self.positive_label, NEGATIVE_LABEL]
+
+    def allow_as_negative(self, relation: Relation, entities: List[Entity]):
+        return self.type_independent_neg_sample or self._same_entity_types_relation(relation, entities)
 
     @classmethod
     def _read_json(cls, input_file: str) -> List[JsonObject]:
@@ -199,28 +248,19 @@ class DocREDProcessor(DataProcessor):
 
         return pos_and_neg_examples
 
-    def _same_entity_types_relation(self, example_json: JsonObject, relation: Relation) -> bool:
+    def _same_entity_types_relation(self, relation: Relation, entities: List[Entity]) -> bool:
         """
         The try/catch essentially does the same the as in DocREDExample.validate.
         Don't need to use the validate method we don't need to log bad examples
         from possible negative examples.
         """
-        def same_entity_types():
-            if not DocREDExample.validate(example_json, relation):
-                return False
+        def get_entity_type(side: str):
+            return entities[relation[side]][0]['type']
 
-            ent1 = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 'h')
-            ent2 = DocREDUtils.entity_from_relation(example_json['vertexSet'], relation, 't')
+        entity_types = [CLASS_MAPPING[self.positive_label]['e1_type'],
+                        CLASS_MAPPING[self.positive_label]['e2_type']]
 
-            return {ent1[0]['type'], ent2[0]['type']} == entity_types
-
-        try:
-            entity_types = {CLASS_MAPPING[self.positive_label]['e1_type'],
-                            CLASS_MAPPING[self.positive_label]['e2_type']}
-
-            return same_entity_types()
-        except IndexError as _:
-            return False
+        return [get_entity_type('h'), get_entity_type('t')] == entity_types
 
     def _positive_relation(self, relation: Relation) -> bool:
         return relation['r'] == CLASS_MAPPING[self.positive_label]['id']

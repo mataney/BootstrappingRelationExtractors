@@ -1,34 +1,186 @@
-from docred import DocREDExample, DocREDUtils
+import os
 
-doc = {
+from docred import DocREDExample, DocREDUtils, DocREDProcessor
+
+doc1 = {
     'vertexSet':
-        [[{'name': 'Lark Force', 'pos': [0, 2], 'sent_id': 0, 'type': 'ORG'}, {'name': 'Lark Force', 'pos': [0, 2], 'sent_id': 0, 'type': 'ORG'}], [{'name': 'Australian Army', 'pos': [4, 6], 'sent_id': 0, 'type': 'ORG'}], [{'pos': [9, 11], 'type': 'TIME', 'sent_id': 0, 'name': 'March 1941'}], [{'name': 'World War II', 'pos': [12, 15], 'sent_id': 0, 'type': 'MISC'}], [{'name': 'New Britain', 'pos': [18, 20], 'sent_id': 0, 'type': 'LOC'}], [{'name': 'New Ireland', 'pos': [21, 23], 'sent_id': 0, 'type': 'LOC'}]], 
+        [
+        [{'name': 'Microsoft', 'pos': [0, 1], 'sent_id': 0, 'type': 'ORG'}, {'name': 'MS', 'pos': [3, 4], 'sent_id': 0, 'type': 'ORG'}, {'name': 'Micro', 'pos': [0, 1], 'sent_id': 1, 'type': 'ORG'}], 
+        [{'name': 'PA', 'pos': [4, 5], 'sent_id': 0, 'type': 'PER'}, {'name': 'Paul', 'pos': [4, 5], 'sent_id': 1, 'type': 'PER'}],
+        ], 
     'labels':
-        [{'r': 'P607', 'h': 1, 't': 3, 'evidence': [0]},
-         {'r': 'P571', 'h': 0, 't': 2, 'evidence': [0]},
-         {'r': 'P607', 'h': 0, 't': 3, 'evidence': [0]}],
-    'title': 'Lark Force',
+        [
+            {'r': 'P112', 'h': 0, 't': 1, 'evidence': [1]}
+        ],
+    'title': 'doc1',
     'sents':
-        [['Lark', 'Force', 'was', 'an', 'Australian', 'Army', 'formation', 'established', 'in', 'March', '1941', 'during', 'World', 'War', 'II', 'for', 'service', 'in', 'New', 'Britain', 'and', 'New', 'Ireland', '.']]
+        [
+            ['Microsoft', 'aka', 'MS', '.', 'PA', 'is', 'the', 'owner', '.'], ['Micro', 'was', 'founded', 'by', 'Paul']
+        ]
     }
 
-entities_by_sent_id = {0: {0, 1, 2, 3, 4, 5}}
-relations_by_entities = {(1, 3): {'r': 'P607', 'h': 1, 't': 3, 'evidence': [0]}, (0, 2): {'r': 'P571', 'h': 0, 't': 2, 'evidence': [0]}, (0, 3): {'r': 'P607', 'h': 0, 't': 3, 'evidence': [0]}}
+doc2 = {
+    'vertexSet': [
+        [{'name': 'John', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}],
+        [{'name': 'Jane', 'pos': [2, 3], 'sent_id': 0, 'type': 'PER'}]
+    ],
+    'labels': [
+        {'r': 'P22', 'h': 0, 't': 1, 'evidence': [0]}
+    ],
+    'title': 'doc2',
+    'sents': [['John', 'is', 'Jane', "'s", 'father']]
+}
+doc3 = {
+    'vertexSet': [
+        [{'name': 'John', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}, {'name': 'John', 'pos': [0, 1], 'sent_id': 1, 'type': 'PER'}],
+        [{'name': 'Mary', 'pos': [2, 3], 'sent_id': 0, 'type': 'PER'}, {'name': 'Mary', 'pos': [2, 3], 'sent_id': 1, 'type': 'PER'}],
+    ],
+    'labels':
+        [
+            {'r': 'P26', 'h': 0, 't': 1, 'evidence': [0, 1]},
+            {'r': 'P26', 'h': 1, 't': 0, 'evidence': [0, 1]}
+        ],
+    'title': 'doc3',
+    'sents': [['John', 'married', 'Mary'], ['John', 'is', 'Mary', "'s", 'husband']]
+}
 
-class TestDocREDExample:
-    def test_validate_returns_true(self):
-        assert DocREDExample.validate(doc, doc['labels'][0])
+doc4 = {
+    'vertexSet': [
+        [{'name': 'Microsoft', 'pos': [2, 3], 'sent_id': 0, 'type': 'ORG'}],
+        [{'name': 'Paul', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}],
+    ],
+    'labels': [
+        {'r': 'P112', 'h': 0, 't': 1, 'evidence': [0]},
+        {'r': 'P488', 'h': 0, 't': 1, 'evidence': [0]},
+    ],
+    'title': 'doc4',
+    'sents': [['Paul', 'founded', 'Microsoft']]
+}
+
+# Tests using this variable require the true path to the data files.
+DATA_DIR = '../datasets/DocRED/'
 
 class TestDocREDUtils:
-    def test_entity_from_relation_passes(self):
-        entity_list = DocREDUtils.entity_from_relation(doc['vertexSet'], doc['labels'][0], 'h')
-        assert entity_list[0] == {'name': 'Australian Army', 'pos': [4, 6], 'sent_id': 0, 'type': 'ORG'}
+    def test__sents_entities_share(self):
+        entities_sents = DocREDUtils._sents_entities_share(doc1, doc1['labels'][0])
+        assert entities_sents == [0, 1]
+        entities_sents = DocREDUtils._sents_entities_share(doc2, doc2['labels'][0])
+        assert entities_sents == [0]
+        entities_sents = DocREDUtils._sents_entities_share(doc3, doc3['labels'][0])
+        assert entities_sents == [0, 1]
+        entities_sents = DocREDUtils._sents_entities_share(doc3, doc3['labels'][1])
+        assert entities_sents == [0, 1]
 
-    def test_found_in_sent(self):
-        assert DocREDUtils.entitiy_found_in_sent(DocREDUtils.entity_from_relation(doc['vertexSet'], doc['labels'][0], 'h'))
+    def test__sents_entities_and_evidence_share(self):
+        entities_sents = DocREDUtils._sents_entities_share(doc1, doc1['labels'][0])
+        entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc1['labels'][0], entities_sents)
+        assert entities_and_evidence_sents == [1]
+        entities_sents = DocREDUtils._sents_entities_share(doc2, doc2['labels'][0])
+        entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc2['labels'][0], entities_sents)
+        assert entities_and_evidence_sents == [0]
+        entities_sents = DocREDUtils._sents_entities_share(doc3, doc3['labels'][0])
+        entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc3['labels'][0], entities_sents)
+        assert entities_and_evidence_sents == [0, 1]
+
+    def test_entity_from_entity_id_passes(self):
+        entity_list = DocREDUtils.entity_from_entity_id(doc1['vertexSet'], doc1['labels'][0]['h'], 0)
+        assert entity_list == [{'name': 'Microsoft', 'pos': [0, 1], 'sent_id': 0, 'type': 'ORG'},
+                               {'name': 'MS', 'pos': [3, 4], 'sent_id': 0, 'type': 'ORG'}]
+        entity_list = DocREDUtils.entity_from_entity_id(doc1['vertexSet'], doc1['labels'][0]['h'], 1)
+        assert entity_list[0] == {'name': 'Micro', 'pos': [0, 1], 'sent_id': 1, 'type': 'ORG'}
 
     def test_entities_by_sent_id(self):
-        assert DocREDUtils.entities_by_sent_id(doc['vertexSet']) == entities_by_sent_id
+        assert DocREDUtils.entities_by_sent_id(doc3['vertexSet']) == {0: {0, 1}, 1: {0, 1}}
 
     def test_relations_by_entities(self):
-        assert DocREDUtils.relations_by_entities(doc['labels']) == relations_by_entities
+        assert DocREDUtils.relations_by_entities(doc3['labels']) == \
+            {(0, 1): [{'r': 'P26', 'h': 0, 't': 1, 'evidence': [0, 1]}],
+             (1, 0): [{'r': 'P26', 'h': 1, 't': 0, 'evidence': [0, 1]}]}
+
+class TestDocREDProcessor:
+    def test__same_entity_types_relation(self):
+        processor = DocREDProcessor('founded by')
+        assert processor._same_entity_types_relation(doc1['labels'][0], doc1['vertexSet'])
+        processor = DocREDProcessor('father')
+        assert processor._same_entity_types_relation(doc2['labels'][0], doc2['vertexSet'])
+        processor = DocREDProcessor('spouse')
+        assert processor._same_entity_types_relation(doc3['labels'][0], doc3['vertexSet'])
+        assert not processor._same_entity_types_relation(doc1['labels'][0], doc1['vertexSet'])
+
+    def test__same_entity_types_relation_switched_h_and_t(self):
+        processor = DocREDProcessor('founded by')
+        relation = doc1['labels'][0]
+        head_is_tail = {'r': relation['r'], 'h': relation['t'], 't': relation['h'], 'evidence': relation['evidence']}
+        assert not processor._same_entity_types_relation(head_is_tail, doc1['vertexSet'])
+
+    def test__same_entity_types_relation_wrong_relation(self):
+        processor = DocREDProcessor('inception')
+        assert not processor._same_entity_types_relation(doc1['labels'][0], doc1['vertexSet'])
+
+    def test_create_all_possible_dev_examples_doc1(self):
+        processor = DocREDProcessor('founded by')
+        data = list(processor._create_all_possible_dev_examples([doc1], None))
+        assert len(data) == 2
+        assert data[0].evidence == 0
+        assert data[0].h == 0
+        assert data[0].t == 1
+        assert data[0].label == 'NOTA'
+
+        assert data[1].evidence == 1
+        assert data[1].h == 0
+        assert data[1].t == 1
+        assert data[1].label == 'founded by'
+
+    def test_create_all_possible_dev_examples_doc2(self):
+        processor = DocREDProcessor('father')
+        data = list(processor._create_all_possible_dev_examples([doc2], None))
+        assert len(data) == 2
+        assert data[0].evidence == 0
+        assert data[0].h == 0
+        assert data[0].t == 1
+        assert data[0].label == 'father'
+
+        assert data[1].evidence == 0
+        assert data[1].h == 1
+        assert data[1].t == 0
+        assert data[1].label == 'NOTA'
+
+    def test_create_all_possible_dev_examples_doc3(self):
+        processor = DocREDProcessor('spouse')
+        data = list(processor._create_all_possible_dev_examples([doc3], None))
+        assert len(data) == 4
+        assert data[0].evidence == 0
+        assert data[0].h == 0
+        assert data[0].t == 1
+        assert data[0].label == 'spouse'
+
+        assert data[1].evidence == 0
+        assert data[1].h == 1
+        assert data[1].t == 0
+        assert data[1].label == 'spouse'
+
+        assert data[2].evidence == 1
+        assert data[2].h == 0
+        assert data[2].t == 1
+        assert data[2].label == 'spouse'
+
+        assert data[3].evidence == 1
+        assert data[3].h == 1
+        assert data[3].t == 0
+        assert data[3].label == 'spouse'
+
+    def test_create_all_possible_dev_examples_doc4(self):
+        processor = DocREDProcessor('founded by')
+        data = list(processor._create_all_possible_dev_examples([doc4], None))
+        assert len(data) == 1
+        assert data[0].evidence == 0
+        assert data[0].h == 0
+        assert data[0].t == 1
+        assert data[0].label == 'founded by'
+
+    def test_get_all_possible_eval_examples_check_positives(self):
+        processor = DocREDProcessor('founded by')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'dev')
+        relations = [d for d in data if d.label == 'founded by']
+        distinct = list(set(relations))
+        assert len(relations) == len(distinct)

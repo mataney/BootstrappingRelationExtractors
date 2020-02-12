@@ -60,9 +60,7 @@ from docred import compute_metrics
 from docred import convert_examples_to_features
 from docred import output_modes
 from docred import processors
-from docred_config import SPECIAL_TOKENS
-from docred_config import DEV_TITLES
-from docred_config import CLASS_MAPPING
+from docred_config import CLASS_MAPPING, SPECIAL_TOKENS, DEV_TITLES, TRAIN_EVAL_TITLES
 from models.mtb import RobertaForRelationClassification
 
 
@@ -296,13 +294,16 @@ def train(args, train_dataset, model, tokenizer):
                     torch.save(scheduler.state_dict(), os.path.join(output_dir, "scheduler.pt"))
                     logger.info("Saving optimizer and scheduler states to %s", output_dir)
 
-                if patience_ended:
-                    train_iterator.close()
-                    break
+            if patience_ended:
+                break
 
             if args.max_steps > 0 and global_step > args.max_steps:
                 epoch_iterator.close()
                 break
+
+        if patience_ended:
+            break
+
         if args.max_steps > 0 and global_step > args.max_steps:
             train_iterator.close()
             break
@@ -313,14 +314,14 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, tokenizer, prefix="", do_full_eval=False):
+def evaluate(args, model, tokenizer, prefix="", set_type="train_eval"):
     # Loop to handle MNLI double evaluation (matched, mis-matched)
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + "-MM") if args.task_name == "mnli" else (args.output_dir,)
 
     results = {}
     for eval_task, eval_output_dir in zip(eval_task_names, eval_outputs_dirs):
-        eval_dataset = load_and_cache_examples(args, eval_task, tokenizer, "full_dev" if do_full_eval else "dev")
+        eval_dataset = load_and_cache_examples(args, eval_task, tokenizer, set_type)
 
         if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(eval_output_dir)
@@ -368,13 +369,14 @@ def evaluate(args, model, tokenizer, prefix="", do_full_eval=False):
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-            if do_full_eval:
+            if 'full' in set_type:
+                title_names = DEV_TITLES if set_type == 'full_dev_eval' else TRAIN_EVAL_TITLES
                 if titles is None:
-                    titles = [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()]
+                    titles = [title_names[t] for t in batch[5].detach().cpu().numpy()]
                     relation_heads = batch[6].detach().cpu().numpy()
                     relation_tails = batch[7].detach().cpu().numpy()
                 else:
-                    titles = np.append(titles, [DEV_TITLES[t] for t in batch[5].detach().cpu().numpy()], axis=0)
+                    titles = np.append(titles, [title_names[t] for t in batch[5].detach().cpu().numpy()], axis=0)
                     relation_heads = np.append(relation_heads, batch[6].detach().cpu().numpy(), axis=0)
                     relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
 
@@ -396,13 +398,13 @@ def evaluate(args, model, tokenizer, prefix="", do_full_eval=False):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
-        if do_full_eval:
+        if 'full' in set_type:
             full_eval_results = []
             for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
                 if pred == positive_label_index:
                     relation_id = CLASS_MAPPING[args.relation_name]['id']
                     full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence[pred].item()})
-            output_eval_file = os.path.join(eval_output_dir, prefix, "full_eval_results.json")
+            output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
             json.dump(full_eval_results, open(output_eval_file, "w"))
 
     return results
@@ -411,7 +413,7 @@ def load_and_cache_examples(args, task, tokenizer, set_type="train"):
     if args.local_rank not in [-1, 0] and set_type == "train":
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    processor = processors[task](args.relation_name, args.num_positive_examples, args.num_negative_examples)
+    processor = processors[task](args.relation_name, args.num_positive_examples, args.num_negative_examples, args.type_independent_neg_sample)
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
@@ -556,8 +558,9 @@ def main():
         "than this will be truncated, sequences shorter will be padded.",
     )
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
-    parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
-    parser.add_argument("--do_full_eval", action="store_true", help="Whether to run eval over all possible relatoins.")
+    parser.add_argument("--do_eval_train_eval", action="store_true", help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_full_train_eval", action="store_true", help="Whether to run eval over all possible relations on train eval split.")
+    parser.add_argument("--do_full_dev_eval", action="store_true", help="Whether to run eval over all possible relations on dev.")
     parser.add_argument(
         "--evaluate_during_training", action="store_true", help="Rul evaluation during training at each logging step.",
     )
@@ -591,7 +594,7 @@ def main():
         help="If > 0: set total number of training steps to perform. Override num_train_epochs.",
     )
     parser.add_argument("--patience", default=-1, type=int, help="Patience for Early Stopping.")
-    parser.add_argument("--warmup_steps", default=0, type=int, help="Linear warmup over warmup_steps.")
+    parser.add_argument("--warmup_steps", default=100, type=int, help="Linear warmup over warmup_steps.")
 
     parser.add_argument("--logging_steps", type=int, default=500, help="Log every X updates steps.")
     parser.add_argument("--save_steps", type=int, default=500, help="Save checkpoint every X updates steps.")
@@ -624,6 +627,10 @@ def main():
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
+
+    parser.add_argument("--type_independent_neg_sample",
+                        action="store_true",
+                        help="Whether negative examples should have same entity types")
     args = parser.parse_args()
 
     if (
@@ -680,7 +687,7 @@ def main():
     args.task_name = args.task_name.lower()
     if args.task_name not in processors:
         raise ValueError("Task not found: %s" % (args.task_name))
-    processor = processors[args.task_name](args.relation_name, args.num_positive_examples, args.num_negative_examples)
+    processor = processors[args.task_name](args.relation_name, args.num_positive_examples, args.num_negative_examples, args.type_independent_neg_sample)
     args.output_mode = output_modes[args.task_name]
     label_list = processor.get_labels()
     num_labels = len(label_list)
@@ -755,7 +762,7 @@ def main():
 
     # Evaluation
     results = {}
-    if (args.do_eval or args.do_full_eval) and args.local_rank in [-1, 0]:
+    if (args.do_eval_train_eval or args.do_full_train_eval or args.do_full_dev_eval) and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
         tokenizer.add_tokens(SPECIAL_TOKENS)
         model.resize_token_embeddings(len(tokenizer))
@@ -772,12 +779,11 @@ def main():
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
-            if args.do_eval:
-                result = evaluate(args, model, tokenizer, prefix=prefix)
-                result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
-                results.update(result)
-            if args.do_full_eval:
-                result = evaluate(args, model, tokenizer, prefix=prefix, do_full_eval=True)
+            splits = ['train_eval', 'full_train_eval', 'full_dev_eval']
+            bools = [args.do_eval_train_eval, args.do_full_train_eval, args.do_full_dev_eval]
+            splits = [s for s, b in zip(splits, bools) if b]
+            for split in splits:
+                result = evaluate(args, model, tokenizer, prefix=prefix, set_type=split)
                 result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
                 results.update(result)
 
