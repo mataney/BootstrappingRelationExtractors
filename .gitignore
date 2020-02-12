@@ -6,3 +6,4 @@
 data/
 runs/
 classification_outputs/
+log*
