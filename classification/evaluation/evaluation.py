@@ -66,6 +66,20 @@ def main(args):
 
     submission_answer_file = args.pred_file
     tmp = json.load(open(submission_answer_file))
+    if len(tmp) == 0:
+        if args.output_file:
+            json.dump({
+                "F1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "best_F1": 0.0,
+                "best_precision": 0.0,
+                "best_recall": 0.0,
+                "best_confidence": 0.0},
+                open(args.output_file, 'w'))
+        return
+
+
     tmp.sort(key=lambda x: (x['title'], x['h_idx'], x['t_idx'], x['r']))
     submission_answer = [tmp[0]]
     for i in range(1, len(tmp)):

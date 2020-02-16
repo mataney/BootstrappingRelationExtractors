@@ -1,6 +1,8 @@
 #!/bin/bash
 # This should be in the home directory
 
+echo "#### Running run_classification ####"
+
 # activate some conda environment
 source activate hugging_face
 
@@ -11,6 +13,8 @@ relation_name=$(jq -r ".relation_name" "$OTO_INPUT")
 num_positive_examples=$(jq ".num_positive_examples" "$OTO_INPUT")
 num_negative_examples=$(jq ".num_negative_examples" "$OTO_INPUT")
 output_dir=classification_outputs/$relation_name/"$num_positive_examples"_"$num_negative_examples"
+
+echo "#### Running Classification ####"
 
 python run_classification.py \
     --data_dir data/DocRED/ \
@@ -37,9 +41,15 @@ python run_classification.py \
     --seed 100 \
     --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$num_negative_examples".txt 2>&1
 
+echo "#### Done Classification ####"
+
+echo "#### Running Evaluation on train_eval ####"
+
 python -m classification.evaluation.evaluation --gold_dir data/DocRED --gold_file eval_split_from_annotated.json --relation_name $relation_name --pred_file "$output_dir/full_train_eval_results.json" --confidence_threshold 0 --output_file "$output_dir/full_train_eval_scores.json"
 
 confidence_threshold_on_train_eval=$(jq -r ".best_confidence" "$output_dir/full_train_eval_scores.json")
+
+echo "#### Running Evaluation on dev_eval ####"
 
 python -m classification.evaluation.evaluation --gold_dir data/DocRED --gold_file eval_split_from_annotated.json --relation_name $relation_name --pred_file "$output_dir/full_dev_eval_results.json" --confidence_threshold $confidence_threshold_on_train_eval --output_file "$output_dir/full_dev_eval_scores.json"
 
@@ -58,3 +68,5 @@ jq -n --slurpfile train_eval_content "$output_dir/full_train_eval_results.json" 
           full_train_eval_results:$train_eval_content
         }' \
       > "$OTO_OUTPUT"
+
+  echo "#### Done run_classification ####"
