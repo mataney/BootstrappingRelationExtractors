@@ -56,11 +56,11 @@ from transformers import (
     get_linear_schedule_with_warmup,
     RobertaModel
 )
-from docred import compute_metrics
-from docred import convert_examples_to_features
-from docred import output_modes
-from docred import processors
-from docred_config import CLASS_MAPPING, SPECIAL_TOKENS, DEV_TITLES, TRAIN_EVAL_TITLES
+from classification.docred import compute_metrics
+from classification.docred import convert_examples_to_features
+from classification.docred import output_modes
+from classification.docred import processors
+from classification.docred_config import CLASS_MAPPING, SPECIAL_TOKENS, DEV_TITLES, TRAIN_EVAL_TITLES
 from models.mtb import RobertaForRelationClassification
 
 

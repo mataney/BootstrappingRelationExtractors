@@ -1,61 +1,12 @@
+import json
 import os
 
-from docred import DocREDExample, DocREDUtils, DocREDProcessor
+from classification.docred import DocREDUtils, DocREDProcessor
 
-doc1 = {
-    'vertexSet':
-        [
-        [{'name': 'Microsoft', 'pos': [0, 1], 'sent_id': 0, 'type': 'ORG'}, {'name': 'MS', 'pos': [3, 4], 'sent_id': 0, 'type': 'ORG'}, {'name': 'Micro', 'pos': [0, 1], 'sent_id': 1, 'type': 'ORG'}], 
-        [{'name': 'PA', 'pos': [4, 5], 'sent_id': 0, 'type': 'PER'}, {'name': 'Paul', 'pos': [4, 5], 'sent_id': 1, 'type': 'PER'}],
-        ], 
-    'labels':
-        [
-            {'r': 'P112', 'h': 0, 't': 1, 'evidence': [1]}
-        ],
-    'title': 'doc1',
-    'sents':
-        [
-            ['Microsoft', 'aka', 'MS', '.', 'PA', 'is', 'the', 'owner', '.'], ['Micro', 'was', 'founded', 'by', 'Paul']
-        ]
-    }
+with open('classification/stubs/fake_truth.json', "r", encoding="utf-8") as f:
+    docs = list(json.load(f))
 
-doc2 = {
-    'vertexSet': [
-        [{'name': 'John', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}],
-        [{'name': 'Jane', 'pos': [2, 3], 'sent_id': 0, 'type': 'PER'}]
-    ],
-    'labels': [
-        {'r': 'P22', 'h': 0, 't': 1, 'evidence': [0]}
-    ],
-    'title': 'doc2',
-    'sents': [['John', 'is', 'Jane', "'s", 'father']]
-}
-doc3 = {
-    'vertexSet': [
-        [{'name': 'John', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}, {'name': 'John', 'pos': [0, 1], 'sent_id': 1, 'type': 'PER'}],
-        [{'name': 'Mary', 'pos': [2, 3], 'sent_id': 0, 'type': 'PER'}, {'name': 'Mary', 'pos': [2, 3], 'sent_id': 1, 'type': 'PER'}],
-    ],
-    'labels':
-        [
-            {'r': 'P26', 'h': 0, 't': 1, 'evidence': [0, 1]},
-            {'r': 'P26', 'h': 1, 't': 0, 'evidence': [0, 1]}
-        ],
-    'title': 'doc3',
-    'sents': [['John', 'married', 'Mary'], ['John', 'is', 'Mary', "'s", 'husband']]
-}
-
-doc4 = {
-    'vertexSet': [
-        [{'name': 'Microsoft', 'pos': [2, 3], 'sent_id': 0, 'type': 'ORG'}],
-        [{'name': 'Paul', 'pos': [0, 1], 'sent_id': 0, 'type': 'PER'}],
-    ],
-    'labels': [
-        {'r': 'P112', 'h': 0, 't': 1, 'evidence': [0]},
-        {'r': 'P488', 'h': 0, 't': 1, 'evidence': [0]},
-    ],
-    'title': 'doc4',
-    'sents': [['Paul', 'founded', 'Microsoft']]
-}
+doc1, doc2, doc3, doc4 = docs
 
 # Tests using this variable require the true path to the data files.
 DATA_DIR = '../datasets/DocRED/'
@@ -99,7 +50,7 @@ class TestDocREDUtils:
 
 class TestDocREDProcessor:
     def test__same_entity_types_relation(self):
-        processor = DocREDProcessor('founded by')
+        processor = DocREDProcessor('founded_by')
         assert processor._same_entity_types_relation(doc1['labels'][0], doc1['vertexSet'])
         processor = DocREDProcessor('father')
         assert processor._same_entity_types_relation(doc2['labels'][0], doc2['vertexSet'])
@@ -108,7 +59,7 @@ class TestDocREDProcessor:
         assert not processor._same_entity_types_relation(doc1['labels'][0], doc1['vertexSet'])
 
     def test__same_entity_types_relation_switched_h_and_t(self):
-        processor = DocREDProcessor('founded by')
+        processor = DocREDProcessor('founded_by')
         relation = doc1['labels'][0]
         head_is_tail = {'r': relation['r'], 'h': relation['t'], 't': relation['h'], 'evidence': relation['evidence']}
         assert not processor._same_entity_types_relation(head_is_tail, doc1['vertexSet'])
@@ -118,7 +69,7 @@ class TestDocREDProcessor:
         assert not processor._same_entity_types_relation(doc1['labels'][0], doc1['vertexSet'])
 
     def test_create_all_possible_dev_examples_doc1(self):
-        processor = DocREDProcessor('founded by')
+        processor = DocREDProcessor('founded_by')
         data = list(processor._create_all_possible_dev_examples([doc1], None))
         assert len(data) == 2
         assert data[0].evidence == 0
@@ -129,7 +80,7 @@ class TestDocREDProcessor:
         assert data[1].evidence == 1
         assert data[1].h == 0
         assert data[1].t == 1
-        assert data[1].label == 'founded by'
+        assert data[1].label == 'founded_by'
 
     def test_create_all_possible_dev_examples_doc2(self):
         processor = DocREDProcessor('father')
@@ -170,17 +121,17 @@ class TestDocREDProcessor:
         assert data[3].label == 'spouse'
 
     def test_create_all_possible_dev_examples_doc4(self):
-        processor = DocREDProcessor('founded by')
+        processor = DocREDProcessor('founded_by')
         data = list(processor._create_all_possible_dev_examples([doc4], None))
         assert len(data) == 1
         assert data[0].evidence == 0
         assert data[0].h == 0
         assert data[0].t == 1
-        assert data[0].label == 'founded by'
+        assert data[0].label == 'founded_by'
 
     def test_get_all_possible_eval_examples_check_positives(self):
-        processor = DocREDProcessor('founded by')
+        processor = DocREDProcessor('founded_by')
         data = processor.get_all_possible_eval_examples(DATA_DIR, 'dev')
-        relations = [d for d in data if d.label == 'founded by']
+        relations = [d for d in data if d.label == 'founded_by']
         distinct = list(set(relations))
         assert len(relations) == len(distinct)
