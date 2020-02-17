@@ -10,11 +10,11 @@ from typing_extensions import Literal, TypedDict
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from transformers.data.processors.utils import DataProcessor, InputExample, InputFeatures
-from docred_config import (START_E1,
-                           END_E1,
-                           START_E2,
-                           END_E2,
-                           CLASS_MAPPING)
+from classification.docred_config import (START_E1,
+                                          END_E1,
+                                          START_E2,
+                                          END_E2,
+                                          CLASS_MAPPING)
 
 logger = logging.getLogger(__name__)
 
