@@ -25,3 +25,13 @@ Out Vars:
 dev_F1, dev_precision, dev_recall, confidence
 ```
  (The rest will be saved in RAW)
+
+ ### Explore Errors
+
+ You can run `expore_error_types.py` to explore the outputs of your model, just copy the RAW from Oto. Then, you can run the analyzing in the following way:
+
+ ```
+ python expore_error_types.py --raw raw_file --confidence_threshold threshold --report tp fp fn
+ ```
+
+ Where `threshold` should be the best train_eval threshold, and `report` should by one or more from `[tp, fp, fn]` that stand for "true positive", "false poritive" and "false negative'.
