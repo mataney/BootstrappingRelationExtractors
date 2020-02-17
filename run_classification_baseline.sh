@@ -10,6 +10,7 @@ cd matan/dev/relation_generation_using_gpt2
 relation_name=$(jq -r ".relation_name" "$OTO_INPUT")
 num_positive_examples=$(jq ".num_positive_examples" "$OTO_INPUT")
 num_negative_examples=$(jq ".num_negative_examples" "$OTO_INPUT")
+seed=$(jq ".seed" "$OTO_INPUT")
 output_dir=classification_outputs/$relation_name/"$num_positive_examples"_"$num_negative_examples"
 
 python run_classification.py \
@@ -34,7 +35,7 @@ python run_classification.py \
     --warmup_steps 100 \
     --per_gpu_train_batch_size 8 \
     --learning_rate 2e-5 \
-    --seed 100 \
+    --seed $seed \
     --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$num_negative_examples".txt 2>&1
 
 python -m classification.evaluation.evaluation --gold_dir data/DocRED --gold_file eval_split_from_annotated.json --relation_name $relation_name --pred_file "$output_dir/full_train_eval_results.json" --confidence_threshold 0 --output_file "$output_dir/full_train_eval_scores.json"
