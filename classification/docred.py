@@ -138,12 +138,12 @@ class DocREDUtils:
         return False
 
 class DocREDProcessor(DataProcessor):
-    def __init__(self, relation_name: str, num_positive: int = None, num_negative: int = None, type_independent_neg_sample: bool = True) -> None:
+    def __init__(self, relation_name: str, num_positive: int = None, negative_ratio: int = None, type_independent_neg_sample: bool = True) -> None:
         super().__init__()
         assert relation_name in CLASS_MAPPING
         self.positive_label = relation_name
         self.num_positive = num_positive
-        self.num_negative = num_negative
+        self.negative_ratio = negative_ratio
         self.type_independent_neg_sample = type_independent_neg_sample
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
@@ -161,12 +161,12 @@ class DocREDProcessor(DataProcessor):
     def get_train_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the train set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_split_from_annotated.json")), "train")
-        return self.sample_examples(examples, self.num_positive, self.num_negative)
+        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def get_eval_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "dev")
-        return self.sample_examples(examples, self.num_positive, self.num_negative, eval=True)
+        return self.sample_examples(examples, self.num_positive, self.negative_ratio, eval=True)
 
     def get_all_possible_eval_examples(self, data_dir: str, set_type: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the eval set."""
@@ -230,7 +230,7 @@ class DocREDProcessor(DataProcessor):
         with open(input_file, "r", encoding="utf-8") as f:
             return list(json.load(f))
 
-    def sample_examples(self, examples: List[JsonObject], num_positive: int = None, num_negative: int = None, eval: bool = False) -> List[DocREDExample]:
+    def sample_examples(self, examples: List[JsonObject], num_positive: int = None, negative_ratio: int = None, eval: bool = False) -> List[DocREDExample]:
         def get_first_num_examples(label, max_num):
             examples_in_label = [e for e in examples if e.label == label]
             if max_num is None:
@@ -241,7 +241,7 @@ class DocREDProcessor(DataProcessor):
         if not eval:
             shuffle(examples)
         positive_examples = get_first_num_examples(self.positive_label, num_positive)
-        negative_examples = get_first_num_examples(NEGATIVE_LABEL, num_negative)
+        negative_examples = get_first_num_examples(NEGATIVE_LABEL, num_positive * negative_ratio)
         pos_and_neg_examples = positive_examples + negative_examples
         if not eval:
             shuffle(pos_and_neg_examples)
