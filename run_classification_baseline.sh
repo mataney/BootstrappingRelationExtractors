@@ -11,32 +11,46 @@ relation_name=$(jq -r ".relation_name" "$OTO_INPUT")
 num_positive_examples=$(jq ".num_positive_examples" "$OTO_INPUT")
 ratio_negative_examples=$(jq ".ratio_negative_examples" "$OTO_INPUT")
 seed=$(jq ".seed" "$OTO_INPUT")
-output_dir=classification_outputs/$relation_name/"$num_positive_examples"_"$ratio_negative_examples"
+
+if [[ $seed = null ]]; then seed=1; fi
+training_method=$(jq -r ".training_method" "$OTO_INPUT")
+if [[ $training_method = null ]]; then training_method="annotated"; fi
+if [[ $training_method = "annotated" ]]
+then
+  do_train_type='--do_train'
+elif [[ $training_method = "distant" ]]
+then
+  do_train_type='--do_distant_train'
+else
+  echo "Wrong training method"
+fi
+
+output_dir=classification_outputs/$relation_name/$training_method/"$num_positive_examples"_"$num_negative_examples"
 
 python run_classification.py \
-    --data_dir data/DocRED/ \
-    --model_type roberta-rc \
-    --model_name_or_path roberta-large \
-    --task_name docred \
-    --output_dir $output_dir \
-    --do_train \
-    --do_eval_train_eval \
-    --do_full_train_eval \
-    --do_full_dev_eval \
-    --evaluate_during_training \
-    --patience 5 \
-    --relation_name $relation_name \
-    --num_positive_examples $num_positive_examples \
-    --ratio_negative_examples $ratio_negative_examples \
-    --type_independent_neg_sample \
-    --num_train_epochs 200 \
-    --logging_steps 100 \
-    --fp16 \
-    --warmup_steps 100 \
-    --per_gpu_train_batch_size 8 \
-    --learning_rate 2e-5 \
-    --seed $seed \
-    --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$ratio_negative_examples".txt 2>&1
+  --data_dir data/DocRED/ \
+  --model_type roberta-rc \
+  --model_name_or_path roberta-large \
+  --task_name docred \
+  --output_dir $output_dir \
+  "$do_train_type" \
+  --do_eval_train_eval \
+  --do_full_train_eval \
+  --do_full_dev_eval \
+  --evaluate_during_training \
+  --patience 5 \
+  --relation_name $relation_name \
+  --num_positive_examples $num_positive_examples \
+  --ratio_negative_examples $ratio_negative_examples \
+  --type_independent_neg_sample \
+  --num_train_epochs 200 \
+  --logging_steps 100 \
+  --fp16 \
+  --warmup_steps 100 \
+  --per_gpu_train_batch_size 8 \
+  --learning_rate 2e-5 \
+  --seed $seed \
+  --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$ratio_negative_examples".txt 2>&1
 
 python -m classification.evaluation.evaluation --gold_dir data/DocRED --gold_file eval_split_from_annotated.json --relation_name $relation_name --pred_file "$output_dir/full_train_eval_results.json" --confidence_threshold 0 --output_file "$output_dir/full_train_eval_scores.json"
 

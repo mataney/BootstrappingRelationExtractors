@@ -561,6 +561,7 @@ def main():
         "than this will be truncated, sequences shorter will be padded.",
     )
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
+    parser.add_argument("--do_distant_train", action="store_true", help="Whether to run training on distant supervision data.")
     parser.add_argument("--do_eval_train_eval", action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--do_full_train_eval", action="store_true", help="Whether to run eval over all possible relations on train eval split.")
     parser.add_argument("--do_full_dev_eval", action="store_true", help="Whether to run eval over all possible relations on dev.")
@@ -639,7 +640,7 @@ def main():
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
-        and args.do_train
+        and (args.do_train or args.do_distant_train)
         and not args.overwrite_output_dir
     ):
         raise ValueError(
@@ -729,13 +730,17 @@ def main():
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
-    if args.do_train:
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer)
+    if args.do_train or args.do_distant_train:
+        train_names = ['train', 'distant']
+        bools = [args.do_train, args.do_distant_train]
+        train_types = [s for s, b in zip(train_names, bools) if b]
+        assert len(train_types) == 1
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, train_types[0])
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
-    if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
+    if (args.do_train or args.do_distant_train) and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
