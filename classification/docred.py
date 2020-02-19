@@ -147,8 +147,11 @@ class DocREDProcessor(DataProcessor):
         self.type_independent_neg_sample = type_independent_neg_sample
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
+        import ipdb; ipdb.set_trace()
         if set_type == "train":
             return self.get_train_examples(data_dir)
+        elif set_type == "train_distant":
+            return self.get_distant_train_examples(data_dir)
         elif set_type == "train_eval":
             return self.get_eval_examples(data_dir)
         elif set_type == "full_train_eval":
@@ -162,6 +165,12 @@ class DocREDProcessor(DataProcessor):
         """Gets a collection of `InputExample`s for the train set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_split_from_annotated.json")), "train")
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
+
+    def get_distant_train_examples(self, data_dir: str) -> List[DocREDExample]:
+        """Gets a collection of `InputExample`s for the train set."""
+        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_distant.json")), "train_distant")
+        import ipdb; ipdb.set_trace()
+        return self.sample_examples(examples, self.num_positive, self.num_negative)
 
     def get_eval_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
