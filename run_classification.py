@@ -519,13 +519,13 @@ def main():
         required=True,
         help="The number of positive examples allowed for classification",
     )
-    parser.add_argument(
-        "--num_negative_examples",
-        default=None,
-        type=int,
-        required=True,
-        help="The number of negative examples allowed for classification",
-    )
+    # parser.add_argument(
+    #     "--num_negative_examples",
+    #     default=None,
+    #     type=int,
+    #     required=True,
+    #     help="The number of negative examples allowed for classification",
+    # )
     parser.add_argument(
         "--ratio_negative_examples",
         default=None,
