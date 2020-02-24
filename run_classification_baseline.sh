@@ -52,10 +52,22 @@ jq -n --slurpfile train_eval_content "$output_dir/full_train_eval_results.json" 
           dev_F1:$dev_eval_scores[0].F1,
           dev_precision:$dev_eval_scores[0].precision,
           dev_recall:$dev_eval_scores[0].recall,
+          confidence:$dev_eval_scores[0].best_confidence
+        }' \
+      > "$OTO_OUTPUT"
+
+jq -n --slurpfile train_eval_content "$output_dir/full_train_eval_results.json" \
+      --slurpfile dev_eval_content "$output_dir/full_dev_eval_results.json" \
+      --slurpfile train_eval_scores "$output_dir/full_train_eval_scores.json" \
+      --slurpfile dev_eval_scores "$output_dir/full_dev_eval_scores.json" \
+      '{
+          dev_F1:$dev_eval_scores[0].F1,
+          dev_precision:$dev_eval_scores[0].precision,
+          dev_recall:$dev_eval_scores[0].recall,
           confidence:$dev_eval_scores[0].best_confidence,
           dev_eval:$dev_eval_scores,
           train_eval:$train_eval_scores,
           full_dev_eval_results:$dev_eval_content,
           full_train_eval_results:$train_eval_content
         }' \
-      > "$OTO_OUTPUT"
+      > "$OTO_BACKUP/full_results.json"

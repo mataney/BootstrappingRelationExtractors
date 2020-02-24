@@ -257,10 +257,8 @@ class DocREDProcessor(DataProcessor):
         def get_entity_type(side: str):
             return entities[relation[side]][0]['type']
 
-        entity_types = [CLASS_MAPPING[self.positive_label]['e1_type'],
-                        CLASS_MAPPING[self.positive_label]['e2_type']]
-
-        return [get_entity_type('h'), get_entity_type('t')] == entity_types
+        return get_entity_type('h') in CLASS_MAPPING[self.positive_label]['e1_type'] and \
+               get_entity_type('t') in CLASS_MAPPING[self.positive_label]['e2_type']
 
     def _positive_relation(self, relation: Relation) -> bool:
         return relation['r'] == CLASS_MAPPING[self.positive_label]['id']
