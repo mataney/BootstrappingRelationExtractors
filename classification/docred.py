@@ -19,7 +19,7 @@ from classification.docred_config import (START_E1,
 logger = logging.getLogger(__name__)
 
 JsonObject = Dict[str, Any]
-SetType = Literal["train", "dev", "full_dev"]
+SetType = Literal["train", "distant", "train_eval", "full_train_eval", "full_dev_eval"]
 Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=int)
 Entity = TypedDict('Entity', name=str, pos=List[int], sent_id=int, type=str)
 T = TypeVar('T', bound='DocREDExample')
@@ -83,17 +83,23 @@ class DocREDExample(InputExample):
         entity = DocREDUtils.entity_from_entity_id(entities, relation[side], self.evidence)[0] # Assuming one wrapping will be enough
         return entity['pos'][0], entity['pos'][-1]
 
+class DistantDocREDExample(DocREDExample):
+    @classmethod
+    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> List[T]:
+        for evidence in DocREDUtils.sents_entities_share(example_json, relation):
+            yield cls(title, example_json, relation, evidence, label)
+
 class DocREDUtils:
     @staticmethod
-    def evidences_with_entities(json_example: JsonObject, relation: Relation) -> List[int]:
-        entities_sents = DocREDUtils._sents_entities_share(json_example, relation)
+    def evidences_with_entities(example_json: JsonObject, relation: Relation) -> List[int]:
+        entities_sents = DocREDUtils.sents_entities_share(example_json, relation)
         entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(relation, entities_sents)
         return entities_and_evidence_sents
 
     @staticmethod
-    def _sents_entities_share(json_example: JsonObject, relation: Relation) -> List[int]:
+    def sents_entities_share(example_json: JsonObject, relation: Relation) -> List[int]:
         def sents_entity_appears_in(side: str) -> List[int]:
-            return [e['sent_id'] for e in json_example['vertexSet'][relation[side]]]
+            return [e['sent_id'] for e in example_json['vertexSet'][relation[side]]]
 
         head_sents = sents_entity_appears_in('h')
         tail_sents = sents_entity_appears_in('t')
@@ -147,10 +153,9 @@ class DocREDProcessor(DataProcessor):
         self.type_independent_neg_sample = type_independent_neg_sample
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
-        import ipdb; ipdb.set_trace()
         if set_type == "train":
             return self.get_train_examples(data_dir)
-        elif set_type == "train_distant":
+        elif set_type == "distant":
             return self.get_distant_train_examples(data_dir)
         elif set_type == "train_eval":
             return self.get_eval_examples(data_dir)
@@ -169,8 +174,7 @@ class DocREDProcessor(DataProcessor):
     def get_distant_train_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the train set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_distant.json")), "train_distant")
-        import ipdb; ipdb.set_trace()
-        return self.sample_examples(examples, self.num_positive, self.num_negative)
+        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def get_eval_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
@@ -185,12 +189,15 @@ class DocREDProcessor(DataProcessor):
             examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "full_dev_eval")
         return list(examples)
 
-    def _create_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
+    def _create_examples(self, documents: List[JsonObject], builder: int = DocREDExample.build, set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
+                import ipdb; ipdb.set_trace()
+                if len(relation['evidence']):
+                    import ipdb; ipdb.set_trace()
                 if self._positive_relation(relation) or self.allow_as_negative(relation, doc['vertexSet']):
-                    examples = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
+                    examples = builder(title_id, doc, relation, label=self._relation_label(relation))
                     for example in examples:
                         yield example
 
@@ -247,6 +254,7 @@ class DocREDProcessor(DataProcessor):
             return examples_in_label[:max_num]
 
         examples = list(examples)
+        import ipdb; ipdb.set_trace()
         if not eval:
             shuffle(examples)
         positive_examples = get_first_num_examples(self.positive_label, num_positive)

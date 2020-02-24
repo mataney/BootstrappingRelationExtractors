@@ -38,7 +38,7 @@ python run_classification.py \
   --do_full_train_eval \
   --do_full_dev_eval \
   --evaluate_during_training \
-  --patience 5 \
+  --patience 6 \
   --relation_name $relation_name \
   --num_positive_examples $num_positive_examples \
   --ratio_negative_examples $ratio_negative_examples \

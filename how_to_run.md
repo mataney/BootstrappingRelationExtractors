@@ -15,10 +15,10 @@ bash run_classification_baseline.sh
 #### Define Arguments
 Explicitly:
 ```
-[{"relation_name": "founded_by", "num_positive_examples": 5, "num_negative_examples": 50, "training_method": "annotated"},
-{"relation_name": "founded_by", "num_positive_examples": 10, "num_negative_examples": 100, "training_method": "annotated"},
-{"relation_name": "founded_by", "num_positive_examples": 20, "num_negative_examples": 200, "training_method": "annotated"},
-{"relation_name": "founded_by", "num_positive_examples": 100, "num_negative_examples": 1000, "training_method": "annotated"}]
+[{"relation_name": "founded_by", "num_positive_examples": 5, "ratio_negative_examples": 10, "training_method": "annotated"},
+{"relation_name": "founded_by", "num_positive_examples": 10, "ratio_negative_examples": 10, "training_method": "annotated"},
+{"relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10, "training_method": "annotated"},
+{"relation_name": "founded_by", "num_positive_examples": 100, "ratio_negative_examples": 10, "training_method": "annotated"}]
 ```
 
 or as a grid:
