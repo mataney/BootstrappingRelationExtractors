@@ -7,12 +7,13 @@ You can find how to run the classification and evluation script in `run_classifi
 ### Oto
 Running with oto example:
 
-CMD: 
+#### CMD:
 ```
 bash run_classification_baseline.sh
 ```
 
-Grid: 
+#### Define Arguments
+Explicitly:
 ```
 [{"relation_name": "founded_by", "num_positive_examples": 5, "num_negative_examples": 100},
 {"relation_name": "founded_by", "num_positive_examples": 20, "num_negative_examples": 400},
@@ -20,7 +21,12 @@ Grid:
 {"relation_name": "founded_by", "num_positive_examples": 100, "num_negative_examples": 2000}]
 ```
 
-Out Vars: 
+or as a grid:
+```
+{"relation_name": ["religion"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [5,10,20], "seed": [1,2,3]}
+```
+
+#### Out Vars:
 ```
 dev_F1, dev_precision, dev_recall, confidence
 ```
