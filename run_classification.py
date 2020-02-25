@@ -372,7 +372,7 @@ def evaluate(args, model, tokenizer, prefix="", set_type="train_eval"):
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-            if 'full' in set_type:
+            if args.task_name == "docred" and 'full' in set_type:
                 title_names = DEV_TITLES if set_type == 'full_dev_eval' else TRAIN_EVAL_TITLES
                 if titles is None:
                     titles = [title_names[t] for t in batch[5].detach().cpu().numpy()]
@@ -401,7 +401,7 @@ def evaluate(args, model, tokenizer, prefix="", set_type="train_eval"):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
-        if 'full' in set_type:
+        if args.task_name == "docred" and 'full' in set_type:
             full_eval_results = []
             for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
                 if pred == positive_label_index:

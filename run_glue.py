@@ -742,7 +742,8 @@ def main():
 
     # Evaluation
     results = {}
-    if (args.do_eval_train_eval or args.do_full_train_eval or args.do_full_dev_eval) and args.local_rank in [-1, 0]:
+    # if (args.do_eval_train_eval or args.do_full_train_eval or args.do_full_dev_eval) and args.local_rank in [-1, 0]:
+    if args.do_eval and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
         tokenizer.add_tokens(SPECIAL_TOKENS)
         model.resize_token_embeddings(len(tokenizer))

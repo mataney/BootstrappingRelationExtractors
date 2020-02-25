@@ -28,7 +28,6 @@ Running classification for all relations as a grid::
 ```
 dev_F1, dev_precision, dev_recall, confidence
 ```
- (The rest will be saved in RAW)
 
  ### Explore Errors
 

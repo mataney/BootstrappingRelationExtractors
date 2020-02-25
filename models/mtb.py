@@ -69,7 +69,7 @@ class MTBClassificationHead(nn.Module):
         if markers_mask is None:
             markers_mask = torch.zeros_like(features).long()
             markers_mask[:, 0, :] = 1 #Making it the same as getting the CLS
-        x = features[markers_mask].view(batch_size, feature_size) # take [E1] and [E2] tokens
+        x = features.masked_select(markers_mask.bool()).view(batch_size, feature_size) # take [E1] and [E2] tokens
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.tanh(x)
