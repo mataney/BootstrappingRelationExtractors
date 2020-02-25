@@ -15,15 +15,13 @@ bash run_classification_baseline.sh
 #### Define Arguments
 Explicitly:
 ```
-[{"relation_name": "founded_by", "num_positive_examples": 5, "num_negative_examples": 100},
-{"relation_name": "founded_by", "num_positive_examples": 20, "num_negative_examples": 400},
-{"relation_name": "founded_by", "num_positive_examples": 50, "num_negative_examples": 1000},
-{"relation_name": "founded_by", "num_positive_examples": 100, "num_negative_examples": 2000}]
+[{"relation_name": "founded_by", "num_positive_examples": 5, "ratio_negative_examples": 10},
+{"relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
 ```
 
-or as a grid:
+Running classification for all relations as a grid::
 ```
-{"relation_name": ["religion"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [5,10,20], "seed": [1,2,3]}
+{"relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "residence", "spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
 
 #### Out Vars:

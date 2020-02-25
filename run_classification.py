@@ -522,13 +522,6 @@ def main():
         required=True,
         help="The number of positive examples allowed for classification",
     )
-    # parser.add_argument(
-    #     "--num_negative_examples",
-    #     default=None,
-    #     type=int,
-    #     required=True,
-    #     help="The number of negative examples allowed for classification",
-    # )
     parser.add_argument(
         "--ratio_negative_examples",
         default=None,
@@ -727,8 +720,6 @@ def main():
     )
     tokenizer.add_tokens(SPECIAL_TOKENS)
     model.resize_token_embeddings(len(tokenizer))
-    # from old.rc_transformer import RCTransformer
-    # model = RCTransformer(model, 2)
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -766,8 +757,6 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
         tokenizer.add_tokens(SPECIAL_TOKENS)
         model.resize_token_embeddings(len(tokenizer))
-        # from old.rc_transformer import RCTransformer
-        # model = RCTransformer(model, 2)
         model.to(args.device)
 
     # Evaluation
