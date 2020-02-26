@@ -258,7 +258,7 @@ class DocREDProcessor(DataProcessor):
         if not eval:
             shuffle(examples)
         positive_examples = get_first_num_examples(self.positive_label, num_positive)
-        negative_examples = get_first_num_examples(NEGATIVE_LABEL, num_positive * negative_ratio)
+        negative_examples = get_first_num_examples(NEGATIVE_LABEL, len(positive_examples) * negative_ratio)
         pos_and_neg_examples = positive_examples + negative_examples
         if not eval:
             shuffle(pos_and_neg_examples)
