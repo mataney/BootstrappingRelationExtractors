@@ -2,14 +2,14 @@
 
 ## Classification and Evaluation
 
-You can find how to run the classification and evluation script in `run_classification_baseline.sh`.
+You can find how to run the classification and evluation script in `run_classification.sh`.
 
 ### Oto
 Running with oto example:
 
 #### CMD:
 ```
-bash run_classification_baseline.sh
+bash run_classification.sh
 ```
 
 #### Define Arguments
