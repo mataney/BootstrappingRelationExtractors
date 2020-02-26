@@ -2,14 +2,14 @@
 
 ## Classification and Evaluation
 
-You can find how to run the classification and evluation script in `run_classification_baseline.sh`.
+You can find how to run the classification and evluation script in `run_classification.sh`.
 
 ### Oto
 Running with oto example:
 
 #### CMD:
 ```
-bash run_classification_baseline.sh
+bash run_classification.sh
 ```
 
 #### Define Arguments
@@ -19,7 +19,7 @@ Explicitly:
 {"relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
 ```
 
-Running classification for all relations as a grid::
+Running classification for all relations as a grid:
 ```
 {"relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "residence", "spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```

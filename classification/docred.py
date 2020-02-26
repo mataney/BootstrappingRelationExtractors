@@ -4,7 +4,7 @@ from itertools import permutations
 import logging
 import os
 from random import shuffle
-from typing import List, Dict, Any, Iterator, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar
 from typing_extensions import Literal, TypedDict
 
 from sklearn.metrics import f1_score, precision_recall_fscore_support
@@ -19,10 +19,11 @@ from classification.docred_config import (START_E1,
 logger = logging.getLogger(__name__)
 
 JsonObject = Dict[str, Any]
-SetType = Literal["train", "dev", "full_dev"]
+SetType = Literal["train", "distant", "train_eval", "full_train_eval", "full_dev_eval"]
 Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=int)
 Entity = TypedDict('Entity', name=str, pos=List[int], sent_id=int, type=str)
 T = TypeVar('T', bound='DocREDExample')
+Builder = Callable[[Type[T], int, JsonObject, Relation, str], List[T]]
 
 NEGATIVE_LABEL = "NOTA"
 
@@ -53,7 +54,7 @@ class DocREDExample(InputExample):
         return hash((self.title, self.text, self.h, self.t, self.label))
 
     @classmethod
-    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label=None) -> List[T]:
+    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label: str = None) -> List[T]:
         for evidence in DocREDUtils.evidences_with_entities(example_json, relation):
             yield cls(title, example_json, relation, evidence, label)
 
@@ -83,17 +84,23 @@ class DocREDExample(InputExample):
         entity = DocREDUtils.entity_from_entity_id(entities, relation[side], self.evidence)[0] # Assuming one wrapping will be enough
         return entity['pos'][0], entity['pos'][-1]
 
+class DistantDocREDExample(DocREDExample):
+    @classmethod
+    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label: str = None) -> List[T]:
+        for evidence in DocREDUtils.sents_entities_share(example_json, relation):
+            yield cls(title, example_json, relation, evidence, label)
+
 class DocREDUtils:
     @staticmethod
-    def evidences_with_entities(json_example: JsonObject, relation: Relation) -> List[int]:
-        entities_sents = DocREDUtils._sents_entities_share(json_example, relation)
+    def evidences_with_entities(example_json: JsonObject, relation: Relation) -> List[int]:
+        entities_sents = DocREDUtils.sents_entities_share(example_json, relation)
         entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(relation, entities_sents)
         return entities_and_evidence_sents
 
     @staticmethod
-    def _sents_entities_share(json_example: JsonObject, relation: Relation) -> List[int]:
+    def sents_entities_share(example_json: JsonObject, relation: Relation) -> List[int]:
         def sents_entity_appears_in(side: str) -> List[int]:
-            return [e['sent_id'] for e in json_example['vertexSet'][relation[side]]]
+            return [e['sent_id'] for e in example_json['vertexSet'][relation[side]]]
 
         head_sents = sents_entity_appears_in('h')
         tail_sents = sents_entity_appears_in('t')
@@ -149,6 +156,8 @@ class DocREDProcessor(DataProcessor):
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
         if set_type == "train":
             return self.get_train_examples(data_dir)
+        elif set_type == "distant":
+            return self.get_distant_train_examples(data_dir)
         elif set_type == "train_eval":
             return self.get_eval_examples(data_dir)
         elif set_type == "full_train_eval":
@@ -163,12 +172,18 @@ class DocREDProcessor(DataProcessor):
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_split_from_annotated.json")), "train")
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
+    def get_distant_train_examples(self, data_dir: str) -> List[DocREDExample]:
+        """Gets a collection of `InputExample`s for the train set."""
+        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_distant.json")),
+                                         "train_distant", builder=DistantDocREDExample.build)
+        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
+
     def get_eval_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the dev set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "dev")
         return self.sample_examples(examples, self.num_positive, self.negative_ratio, eval=True)
 
-    def get_all_possible_eval_examples(self, data_dir: str, set_type: str) -> List[DocREDExample]:
+    def get_all_possible_eval_examples(self, data_dir: str, set_type: SetType) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the eval set."""
         if set_type == 'full_train_eval':
             examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "full_eval_split_from_annotated_eval")
@@ -176,12 +191,14 @@ class DocREDProcessor(DataProcessor):
             examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "full_dev_eval")
         return list(examples)
 
-    def _create_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
+    def _create_examples(self, documents: List[JsonObject],
+                         set_type: SetType,
+                         builder: Builder = DocREDExample.build) -> Iterator[DocREDExample]:
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
                 if self._positive_relation(relation) or self.allow_as_negative(relation, doc['vertexSet']):
-                    examples = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
+                    examples = builder(title_id, doc, relation, label=self._relation_label(relation))
                     for example in examples:
                         yield example
 
@@ -197,7 +214,7 @@ class DocREDProcessor(DataProcessor):
     def _create_all_relation_permutations(self, doc: JsonObject) -> Iterator[Relation]:
         entities_by_sent_id = DocREDUtils.entities_by_sent_id(doc['vertexSet'])
         relations_by_entities = DocREDUtils.relations_by_entities(doc['labels'])
-        
+
         relations = []
 
         positive_label_id = CLASS_MAPPING[self.positive_label]['id']
