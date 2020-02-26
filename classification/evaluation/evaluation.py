@@ -75,7 +75,7 @@ def main(args):
                 "best_F1": 0.0,
                 "best_precision": 0.0,
                 "best_recall": 0.0,
-                "best_confidence": 0.0},
+                "best_confidence": (0.5 - 1e-10)},
                       open(args.output_file, 'w'))
         return
 
@@ -98,7 +98,7 @@ def main(args):
     correct_in_train_annotated = 0
     correct_in_train_distant = 0
     titleset2 = set([])
-    re_f1, re_p, re_r, best_f1, best_p, best_r, best_confidence = 0, 0, 0, 0, 0, 0, 1.0
+    re_f1, re_p, re_r, best_f1, best_p, best_r, best_confidence = 0, 0, 0, 0, 0, 0, (0.5 - 1e-10)
     for i, x in enumerate(submission_answer):
         title = x['title']
         h_idx = x['h_idx']

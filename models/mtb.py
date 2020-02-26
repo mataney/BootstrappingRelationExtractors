@@ -67,7 +67,8 @@ class MTBClassificationHead(nn.Module):
     def forward(self, features, markers_mask):
         batch_size, _, feature_size = features.size()
         assert all(markers_mask.sum(1) == 2)
-        x = features[markers_mask].view(batch_size, 2*feature_size) # take [E1] and [E2] tokens
+        # take [E1] and [E2] tokens
+        x = features.masked_select(markers_mask.unsqueeze(2)).view(batch_size, 2*feature_size)
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.tanh(x)
