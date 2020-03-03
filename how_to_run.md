@@ -26,12 +26,12 @@ Running classification for all relations as a grid:
 
 Or for Distant Supervision:
 ```
-{"training_method": ["distant"], "relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [100, 500, 1000], "ratio_negative_examples": [10], "logging_steps": [1000]}
+{"training_method": ["distant"], "relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [100, 500, 1000], "ratio_negative_examples": [10], "logging_steps": [100]}
 ```
 
 #### Out Vars:
 ```
-dev_F1, dev_precision, dev_recall, confidence
+dev_F1, dev_precision, dev_recall, confidence, time
 ```
  (The rest will be saved in RAW)
 
