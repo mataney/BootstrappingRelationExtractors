@@ -18,7 +18,6 @@ class TestTACREDProcessor:
     def test_get_dev_examples(self):
         processor = TACREDProcessor('org:founded_by', 5, 2)
         examples = processor.get_examples_by_set_type('full_test_eval', data_dir)
-        import pdb; pdb.set_trace()
         assert len([e for e in examples if e.label == "org:founded_by"]) == 68
         assert len([e for e in examples if e.label != "org:founded_by"]) == 1190
         assert len(examples) == 68 + 1190

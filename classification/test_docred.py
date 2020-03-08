@@ -9,7 +9,7 @@ with open('classification/stubs/docred/fake_truth.json', "r", encoding="utf-8") 
 doc1, doc2, doc3, doc4 = docs
 
 # Tests using this variable require the true path to the data files.
-DATA_DIR = '../datasets/DocRED/'
+DATA_DIR = 'data/DocRED/'
 
 class TestDocREDUtils:
     def test_sents_entities_share(self):
@@ -135,6 +135,20 @@ class TestDocREDProcessor:
         relations = [d for d in data if d.label == 'founded_by']
         distinct = list(set(relations))
         assert len(relations) == len(distinct)
+
+    def test_get_all_possible_dev_eval_examples_check_positives_num_examples(self):
+        processor = DocREDProcessor('founded_by')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'full_dev_eval')
+        in_relation = [d for d in data if d.label == 'founded_by']
+        assert len(data) == 2228
+        assert len(in_relation) == 9
+
+    def test_get_all_possible_test_eval_examples_check_positives_num_examples(self):
+        processor = DocREDProcessor('founded_by')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'full_test_eval')
+        in_relation = [d for d in data if d.label == 'founded_by']
+        assert len(data) == 3895
+        assert len(in_relation) == 20
 
 class TestDocREDExample:
     def test_init(self):
