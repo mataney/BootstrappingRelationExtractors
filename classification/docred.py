@@ -1,34 +1,22 @@
 from collections import defaultdict
-import json
 from itertools import permutations
 import logging
 import os
-from random import shuffle
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar
-from typing_extensions import Literal, TypedDict
+from typing_extensions import TypedDict
 
-from sklearn.metrics import f1_score, precision_recall_fscore_support
-
-from transformers.data.processors.utils import DataProcessor, InputExample, InputFeatures
-from classification.docred_config import (START_E1,
-                                          END_E1,
-                                          START_E2,
-                                          END_E2,
-                                          CLASS_MAPPING)
+from transformers.data.processors.utils import InputExample, InputFeatures
+from classification.docred_config import RELATION_MAPPING
+from classification.re_processors import REProcessor, JsonObject, wrap_text, SetType, NEGATIVE_LABEL
 
 logger = logging.getLogger(__name__)
 
-JsonObject = Dict[str, Any]
-SetType = Literal["train", "distant", "train_eval", "full_train_eval", "full_dev_eval"]
 Relation = TypedDict('Relation', r=str, h=int, t=int, evidence=int)
 Entity = TypedDict('Entity', name=str, pos=List[int], sent_id=int, type=str)
 T = TypeVar('T', bound='DocREDExample')
 Builder = Callable[[Type[T], int, JsonObject, Relation, str], List[T]]
 
-NEGATIVE_LABEL = "NOTA"
-
 class DocREDExample(InputExample):
-
     def __init__(self, title: int, example_json: JsonObject, relation: Relation, evidence: int, label: str = None) -> None:
         self.title = title
         self.evidence = evidence
@@ -61,21 +49,9 @@ class DocREDExample(InputExample):
     def _mark_entities(self, example_json: JsonObject, relation: Relation) -> str:
         e1_start_idx, e1_end_idx = self._relation_span(example_json['vertexSet'], relation, 'h')
         e2_start_idx, e2_end_idx = self._relation_span(example_json['vertexSet'], relation, 't')
-
         text = example_json['sents'][self.evidence].copy()
 
-        if e2_end_idx > e1_end_idx:
-            text.insert(e2_end_idx, END_E2)
-            text.insert(e2_start_idx, START_E2)
-            text.insert(e1_end_idx, END_E1)
-            text.insert(e1_start_idx, START_E1)
-        else:
-            text.insert(e1_end_idx, END_E1)
-            text.insert(e1_start_idx, START_E1)
-            text.insert(e2_end_idx, END_E2)
-            text.insert(e2_start_idx, START_E2)
-
-        return ' '.join(text)
+        return wrap_text(text, e1_start_idx, e1_end_idx, e2_start_idx, e2_end_idx)
 
     def _relation_span(self, entities: List[Entity], relation: Relation, side: str) -> [int, int]:
         """
@@ -144,52 +120,21 @@ class DocREDUtils:
                 return True
         return False
 
-class DocREDProcessor(DataProcessor):
+class DocREDProcessor(REProcessor):
     def __init__(self, relation_name: str, num_positive: int = None, negative_ratio: int = None, type_independent_neg_sample: bool = True) -> None:
-        super().__init__()
-        assert relation_name in CLASS_MAPPING
-        self.positive_label = relation_name
-        self.num_positive = num_positive
-        self.negative_ratio = negative_ratio
-        self.type_independent_neg_sample = type_independent_neg_sample
-
-    def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[DocREDExample]:
-        if set_type == "train":
-            return self.get_train_examples(data_dir)
-        elif set_type == "distant":
-            return self.get_distant_train_examples(data_dir)
-        elif set_type == "train_eval":
-            return self.get_eval_examples(data_dir)
-        elif set_type == "full_train_eval":
-            return self.get_all_possible_eval_examples(data_dir, 'full_train_eval')
-        elif set_type == "full_dev_eval":
-            return self.get_all_possible_eval_examples(data_dir, 'dev')
-        else:
-            raise Exception("Wrong set_type name")
-
-    def get_train_examples(self, data_dir: str) -> List[DocREDExample]:
-        """Gets a collection of `InputExample`s for the train set."""
-        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_split_from_annotated.json")), "train")
-        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
+        super().__init__(relation_name, num_positive, negative_ratio, type_independent_neg_sample)
+        assert relation_name in RELATION_MAPPING
+        self.relation_mapping = RELATION_MAPPING
+        self.train_file = "train_split_from_annotated.json"
+        self.dev_file = "eval_split_from_annotated.json"
+        self.test_file = "dev.json"
+        self.train_distant_file = "train_distant.json"
 
     def get_distant_train_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the train set."""
-        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train_distant.json")),
+        examples = self._create_examples(self._read_json(os.path.join(data_dir, self.train_distant_file)),
                                          "train_distant", builder=DistantDocREDExample.build)
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
-
-    def get_eval_examples(self, data_dir: str) -> List[DocREDExample]:
-        """Gets a collection of `InputExample`s for the dev set."""
-        examples = self._create_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "dev")
-        return self.sample_examples(examples, self.num_positive, self.negative_ratio, eval=True)
-
-    def get_all_possible_eval_examples(self, data_dir: str, set_type: SetType) -> List[DocREDExample]:
-        """Gets a collection of `InputExample`s for the eval set."""
-        if set_type == 'full_train_eval':
-            examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "eval_split_from_annotated.json")), "full_eval_split_from_annotated_eval")
-        else:
-            examples = self._create_all_possible_dev_examples(self._read_json(os.path.join(data_dir, "dev.json")), "full_dev_eval")
-        return list(examples)
 
     def _create_examples(self, documents: List[JsonObject],
                          set_type: SetType,
@@ -217,7 +162,7 @@ class DocREDProcessor(DataProcessor):
 
         relations = []
 
-        positive_label_id = CLASS_MAPPING[self.positive_label]['id']
+        positive_label_id = self.relation_mapping[self.positive_label]['id']
         for sent_id, entities_in_sent in entities_by_sent_id.items():
             for perm in permutations(entities_in_sent, 2):
                 relation_id = (
@@ -234,36 +179,8 @@ class DocREDProcessor(DataProcessor):
             if self._same_entity_types_relation(relation, doc['vertexSet']):
                 yield relation
 
-    def get_labels(self) -> List[str]:
-        """Gets the list of labels for this data set."""
-        return [self.positive_label, NEGATIVE_LABEL]
-
     def allow_as_negative(self, relation: Relation, entities: List[Entity]):
         return self.type_independent_neg_sample or self._same_entity_types_relation(relation, entities)
-
-    @classmethod
-    def _read_json(cls, input_file: str) -> List[JsonObject]:
-        """Reads a tab separated value file."""
-        with open(input_file, "r", encoding="utf-8") as f:
-            return list(json.load(f))
-
-    def sample_examples(self, examples: List[JsonObject], num_positive: int = None, negative_ratio: int = None, eval: bool = False) -> List[DocREDExample]:
-        def get_first_num_examples(label, max_num):
-            examples_in_label = [e for e in examples if e.label == label]
-            if max_num is None:
-                return examples_in_label
-            return examples_in_label[:max_num]
-
-        examples = list(examples)
-        if not eval:
-            shuffle(examples)
-        positive_examples = get_first_num_examples(self.positive_label, num_positive)
-        negative_examples = get_first_num_examples(NEGATIVE_LABEL, len(positive_examples) * negative_ratio)
-        pos_and_neg_examples = positive_examples + negative_examples
-        if not eval:
-            shuffle(pos_and_neg_examples)
-
-        return pos_and_neg_examples
 
     def _same_entity_types_relation(self, relation: Relation, entities: List[Entity]) -> bool:
         """
@@ -274,125 +191,14 @@ class DocREDProcessor(DataProcessor):
         def get_entity_type(side: str):
             return entities[relation[side]][0]['type']
 
-        return get_entity_type('h') in CLASS_MAPPING[self.positive_label]['e1_type'] and \
-               get_entity_type('t') in CLASS_MAPPING[self.positive_label]['e2_type']
+        return get_entity_type('h') in self.relation_mapping[self.positive_label]['e1_type'] and \
+               get_entity_type('t') in self.relation_mapping[self.positive_label]['e2_type']
 
     def _positive_relation(self, relation: Relation) -> bool:
-        return relation['r'] == CLASS_MAPPING[self.positive_label]['id']
+        return relation['r'] == self.relation_mapping[self.positive_label]['id']
 
     def _relation_label(self, relation: Relation) -> str:
         return self.positive_label if self._positive_relation(relation) else NEGATIVE_LABEL
-
-#This is a copy of glue_convert_examples_to_features with minor changes
-def convert_examples_to_features(
-    examples,
-    tokenizer,
-    max_length=512,
-    task=None,
-    label_list=None,
-    output_mode=None,
-    pad_on_left=False,
-    pad_token=0,
-    pad_token_segment_id=0,
-    mask_padding_with_zero=True,
-):
-    """
-    Loads a data file into a list of ``InputFeatures``
-
-    Args:
-        examples: List of ``InputExamples`` or ``tf.data.Dataset`` containing the examples.
-        tokenizer: Instance of a tokenizer that will tokenize the examples
-        max_length: Maximum example length
-        task: GLUE task
-        label_list: List of labels. Can be obtained from the processor using the ``processor.get_labels()`` method
-        output_mode: String indicating the output mode. Either ``regression`` or ``classification``
-        pad_on_left: If set to ``True``, the examples will be padded on the left rather than on the right (default)
-        pad_token: Padding token
-        pad_token_segment_id: The segment ID for the padding token (It is usually 0, but can vary such as for XLNet where it is 4)
-        mask_padding_with_zero: If set to ``True``, the attention mask will be filled by ``1`` for actual values
-            and by ``0`` for padded values. If set to ``False``, inverts it (``1`` for padded values, ``0`` for
-            actual values)
-
-    Returns:
-        If the ``examples`` input is a ``tf.data.Dataset``, will return a ``tf.data.Dataset``
-        containing the task-specific features. If the input is a list of ``InputExamples``, will return
-        a list of task-specific ``InputFeatures`` which can be fed to the model.
-
-    """
-
-    label_map = {label: i for i, label in enumerate(label_list)}
-
-    features = []
-    for (ex_index, example) in enumerate(examples):
-        len_examples = 0
-        len_examples = len(examples)
-        if ex_index % 10000 == 0:
-            logger.info("Writing example %d/%d" % (ex_index, len_examples))
-
-        inputs = tokenizer.encode_plus(example.text, add_special_tokens=True, max_length=max_length,)
-        input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
-
-        # The mask has 1 for real tokens and 0 for padding tokens. Only real
-        # tokens are attended to.
-        attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
-
-        # Zero-pad up to the sequence length.
-        padding_length = max_length - len(input_ids)
-        if pad_on_left:
-            input_ids = ([pad_token] * padding_length) + input_ids
-            attention_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + attention_mask
-            token_type_ids = ([pad_token_segment_id] * padding_length) + token_type_ids
-        else:
-            input_ids = input_ids + ([pad_token] * padding_length)
-            attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
-            token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
-
-        start_markers_ids = [tokenizer.convert_tokens_to_ids(t) for t in [START_E1, START_E2]]
-        markers_mask = [1 if t in start_markers_ids else 0 for t in input_ids]
-        if sum(markers_mask) != 2:
-            logger.info("Text is truncated and not all entities have made it.")
-            continue
-
-        assert len(input_ids) == max_length, "Error with input length {} vs {}".format(len(input_ids), max_length)
-        assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(
-            len(attention_mask), max_length
-        )
-        assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(
-            len(token_type_ids), max_length
-        )
-
-        if output_mode == "classification":
-            label = label_map[example.label]
-        elif output_mode == "regression":
-            label = float(example.label)
-        else:
-            raise KeyError(output_mode)
-
-        if ex_index < 5:
-            logger.info("*** Example ***")
-            logger.info("title: %s" % (example.title))
-            logger.info("head: %s" % (example.h))
-            logger.info("tail: %s" % (example.t))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-            logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
-            logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
-            logger.info("markers_mask: %s" % " ".join([str(x) for x in markers_mask]))
-            logger.info("label: %s (id = %d)" % (example.label, label))
-
-        features.append(
-            DocREDInputFeatures(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
-                markers_mask=markers_mask,
-                title=example.title,
-                h=example.h,
-                t=example.t,
-                label=label,
-            )
-        )
-
-    return features
 
 class DocREDInputFeatures(InputFeatures):
     def __init__(self,
@@ -400,38 +206,10 @@ class DocREDInputFeatures(InputFeatures):
                  attention_mask=None,
                  token_type_ids=None,
                  markers_mask=None,
-                 title=None,
-                 h=None,
-                 t=None,
+                 example=None,
                  label=None) -> None:
         super().__init__(input_ids, attention_mask, token_type_ids, label)
         self.markers_mask = markers_mask
-        self.title = title
-        self.h = h
-        self.t = t
-
-def compute_metrics(task_name, preds, labels, positive_label):
-    assert task_name == "docred"
-    assert len(preds) == len(labels)
-    return f1_ignore_negative_class(preds, labels, positive_label)
-
-def simple_accuracy(preds, labels):
-    return (preds == labels).mean()
-
-def f1_ignore_negative_class(preds, labels, positive_label):
-    f1 = f1_score(y_true=labels, y_pred=preds)
-    p, r, f, _ = precision_recall_fscore_support(y_true=labels,
-                                                            y_pred=preds,
-                                                            pos_label=positive_label,
-                                                            average='binary')
-
-    return {
-        "p": p,
-        "r": r,
-        "f1": f,
-        "f1_do_not_ignore_negative_class": f1,
-    }
-
-output_modes = {"docred": "classification"}
-
-processors = {"docred": DocREDProcessor}
+        self.title = example.title
+        self.h = example.h
+        self.t = example.t

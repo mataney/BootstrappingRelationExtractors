@@ -1,0 +1,52 @@
+[{
+    "vertexSet":
+        [
+        [{"name": "Microsoft", "pos": [0, 1], "sent_id": 0, "type": "ORG"}, {"name": "MS", "pos": [3, 4], "sent_id": 0, "type": "ORG"}, {"name": "Micro", "pos": [0, 1], "sent_id": 1, "type": "ORG"}], 
+        [{"name": "PA", "pos": [4, 5], "sent_id": 0, "type": "PER"}, {"name": "Paul", "pos": [4, 5], "sent_id": 1, "type": "PER"}]
+        ], 
+    "labels":
+        [
+            {"r": "P112", "h": 0, "t": 1, "evidence": [1]}
+        ],
+    "title": "doc1",
+    "sents":
+        [
+            ["Microsoft", "aka", "MS", ".", "PA", "is", "the", "owner", "."], ["Micro", "was", "founded", "by", "Paul"]
+        ]
+    },
+{
+    "vertexSet": [
+        [{"name": "John", "pos": [0, 1], "sent_id": 0, "type": "PER"}],
+        [{"name": "Jane", "pos": [2, 3], "sent_id": 0, "type": "PER"}]
+    ],
+    "labels": [
+        {"r": "P22", "h": 0, "t": 1, "evidence": [0]}
+    ],
+    "title": "doc2",
+    "sents": [["John", "is", "Jane", "'s", "father"]]
+},
+{
+    "vertexSet": [
+        [{"name": "John", "pos": [0, 1], "sent_id": 0, "type": "PER"}, {"name": "John", "pos": [0, 1], "sent_id": 1, "type": "PER"}],
+        [{"name": "Mary", "pos": [2, 3], "sent_id": 0, "type": "PER"}, {"name": "Mary", "pos": [2, 3], "sent_id": 1, "type": "PER"}]
+    ],
+    "labels":
+        [
+            {"r": "P26", "h": 0, "t": 1, "evidence": [0, 1]},
+            {"r": "P26", "h": 1, "t": 0, "evidence": [0, 1]}
+        ],
+    "title": "doc3",
+    "sents": [["John", "married", "Mary"], ["John", "is", "Mary", "'s", "husband"]]
+},
+{
+    "vertexSet": [
+        [{"name": "Microsoft", "pos": [2, 3], "sent_id": 0, "type": "ORG"}],
+        [{"name": "Paul", "pos": [0, 1], "sent_id": 0, "type": "PER"}]
+    ],
+    "labels": [
+        {"r": "P112", "h": 0, "t": 1, "evidence": [0]},
+        {"r": "P488", "h": 0, "t": 1, "evidence": [0]}
+    ],
+    "title": "doc4",
+    "sents": [["Paul", "founded", "Microsoft"]]
+}]

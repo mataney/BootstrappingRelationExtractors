@@ -150,7 +150,7 @@ if __name__ == "__main__":
         type=str,
         required=True)
     parser.add_argument('-confidence_threshold', '--confidence_threshold', type=float, required=True)
-    parser.add_argument('-report', '--report', nargs='+', choices=['tp', 'fp', 'fn'])
+    parser.add_argument('-report', '--report', nargs='+', choices=['tp', 'fp', 'fn'], default='tp fp fn')
     args = parser.parse_args()
     
     with open(args.raw, 'r') as f:
@@ -159,4 +159,4 @@ if __name__ == "__main__":
     with open('data/DocRED/dev.json', 'r') as f:
         gold = json.load(f)
 
-    main(raw['results']['full_dev_eval_results'][0], gold, args)
+    main(raw['full_dev_eval_results'][0], gold, args)

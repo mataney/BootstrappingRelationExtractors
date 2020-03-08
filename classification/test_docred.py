@@ -1,35 +1,35 @@
 import json
 import os
 
-from classification.docred import DocREDUtils, DocREDProcessor
+from classification.docred import DocREDUtils, DocREDProcessor, DocREDExample
 
-with open('classification/stubs/fake_truth.json', "r", encoding="utf-8") as f:
+with open('classification/stubs/docred/fake_truth.json', "r", encoding="utf-8") as f:
     docs = list(json.load(f))
 
 doc1, doc2, doc3, doc4 = docs
 
 # Tests using this variable require the true path to the data files.
-DATA_DIR = '../datasets/DocRED/'
+DATA_DIR = 'data/DocRED/'
 
 class TestDocREDUtils:
-    def test__sents_entities_share(self):
-        entities_sents = DocREDUtils._sents_entities_share(doc1, doc1['labels'][0])
+    def test_sents_entities_share(self):
+        entities_sents = DocREDUtils.sents_entities_share(doc1, doc1['labels'][0])
         assert entities_sents == [0, 1]
-        entities_sents = DocREDUtils._sents_entities_share(doc2, doc2['labels'][0])
+        entities_sents = DocREDUtils.sents_entities_share(doc2, doc2['labels'][0])
         assert entities_sents == [0]
-        entities_sents = DocREDUtils._sents_entities_share(doc3, doc3['labels'][0])
+        entities_sents = DocREDUtils.sents_entities_share(doc3, doc3['labels'][0])
         assert entities_sents == [0, 1]
-        entities_sents = DocREDUtils._sents_entities_share(doc3, doc3['labels'][1])
+        entities_sents = DocREDUtils.sents_entities_share(doc3, doc3['labels'][1])
         assert entities_sents == [0, 1]
 
     def test__sents_entities_and_evidence_share(self):
-        entities_sents = DocREDUtils._sents_entities_share(doc1, doc1['labels'][0])
+        entities_sents = DocREDUtils.sents_entities_share(doc1, doc1['labels'][0])
         entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc1['labels'][0], entities_sents)
         assert entities_and_evidence_sents == [1]
-        entities_sents = DocREDUtils._sents_entities_share(doc2, doc2['labels'][0])
+        entities_sents = DocREDUtils.sents_entities_share(doc2, doc2['labels'][0])
         entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc2['labels'][0], entities_sents)
         assert entities_and_evidence_sents == [0]
-        entities_sents = DocREDUtils._sents_entities_share(doc3, doc3['labels'][0])
+        entities_sents = DocREDUtils.sents_entities_share(doc3, doc3['labels'][0])
         entities_and_evidence_sents = DocREDUtils._sents_entities_and_evidence_share(doc3['labels'][0], entities_sents)
         assert entities_and_evidence_sents == [0, 1]
 
@@ -131,7 +131,31 @@ class TestDocREDProcessor:
 
     def test_get_all_possible_eval_examples_check_positives(self):
         processor = DocREDProcessor('founded_by')
-        data = processor.get_all_possible_eval_examples(DATA_DIR, 'dev')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'full_test_eval')
         relations = [d for d in data if d.label == 'founded_by']
         distinct = list(set(relations))
         assert len(relations) == len(distinct)
+
+    def test_get_all_possible_dev_eval_examples_check_positives_num_examples(self):
+        processor = DocREDProcessor('founded_by')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'full_dev_eval')
+        in_relation = [d for d in data if d.label == 'founded_by']
+        assert len(data) == 2228
+        assert len(in_relation) == 9
+
+    def test_get_all_possible_test_eval_examples_check_positives_num_examples(self):
+        processor = DocREDProcessor('founded_by')
+        data = processor.get_all_possible_eval_examples(DATA_DIR, 'full_test_eval')
+        in_relation = [d for d in data if d.label == 'founded_by']
+        assert len(data) == 3895
+        assert len(in_relation) == 20
+
+class TestDocREDExample:
+    def test_init(self):
+        example = DocREDExample(0, doc1, doc1['labels'][0], 1, True)
+        assert example.evidence == 1
+        assert example.h == 0
+        assert example.label
+        assert example.t == 1
+        assert example.text == "[E1] Micro [/E1] was founded by [E2] Paul [/E2]"
+        assert example.title == 0

@@ -15,8 +15,8 @@ bash run_classification.sh
 #### Define Arguments
 Explicitly:
 ```
-[{"relation_name": "founded_by", "num_positive_examples": 5, "ratio_negative_examples": 10},
-{"relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
+[{"task": "docred", "relation_name": "founded_by", "num_positive_examples": 5, "ratio_negative_examples": 10},
+{"task": "docred", "relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
 ```
 
 Running classification for all relations as a grid:
@@ -43,4 +43,4 @@ dev_F1, dev_precision, dev_recall, confidence
  python expore_error_types.py --raw raw_file --confidence_threshold threshold --report tp fp fn
  ```
 
- Where `threshold` should be the best train_eval threshold, and `report` should by one or more from `[tp, fp, fn]` that stand for "true positive", "false poritive" and "false negative'.
+ Where `threshold` should be the best dev threshold, and `report` should by one or more from `[tp, fp, fn]` that stand for "true positive", "false poritive" and "false negative'.
