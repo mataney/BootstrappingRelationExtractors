@@ -63,8 +63,10 @@ python run_classification.py \
   --ratio_negative_examples $ratio_negative_examples \
   --type_independent_neg_sample \
   --num_train_epochs 200 \
-  --logging_steps $logging_steps \
   --fp16 \
+  --logging_steps $logging_steps \
+  --save_steps $logging_steps \
+  --save_only_best \
   --warmup_steps 100 \
   --per_gpu_train_batch_size 8 \
   --learning_rate 2e-5 \

@@ -17,6 +17,7 @@
 
 
 import argparse
+from distutils.dir_util import copy_tree, remove_tree
 import glob
 import json
 import logging
@@ -294,7 +295,21 @@ def train(args, train_dataset, model, tokenizer):
 
                     torch.save(optimizer.state_dict(), os.path.join(output_dir, "optimizer.pt"))
                     torch.save(scheduler.state_dict(), os.path.join(output_dir, "scheduler.pt"))
+                    assert args.logging_steps == args.save_steps
+                    torch.save(results, os.path.join(output_dir, "results.bin"))
                     logger.info("Saving optimizer and scheduler states to %s", output_dir)
+
+                    best_dir = os.path.join(args.output_dir, "best")
+                    if not os.path.exists(best_dir):
+                        os.makedirs(best_dir)
+                        copy_tree(output_dir, best_dir)
+                    elif results[args.save_best_wrt_metric] > torch.load(os.path.join(output_dir, "results.bin"))[args.save_best_wrt_metric]:
+                        remove_tree(best_dir)
+                        os.makedirs(best_dir)
+                        copy_tree(output_dir, best_dir)
+
+                    if args.save_only_best:
+                        remove_tree(output_dir)
 
             if patience_ended:
                 break
@@ -601,6 +616,8 @@ def main():
 
     parser.add_argument("--logging_steps", type=int, default=500, help="Log every X updates steps.")
     parser.add_argument("--save_steps", type=int, default=500, help="Save checkpoint every X updates steps.")
+    parser.add_argument("--save_only_best", action="store_true", help="No need to keep all checkpoints, just best one.")
+    parser.add_argument("--save_best_wrt_metric", type=str, default="f1", help="What is the metric comparing checkpoints to")
     parser.add_argument(
         "--eval_all_checkpoints",
         action="store_true",
@@ -742,14 +759,18 @@ def main():
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
 
-        logger.info("Saving model checkpoint to %s", args.output_dir)
-        # Save a trained model, configuration and tokenizer using `save_pretrained()`.
-        # They can then be reloaded using `from_pretrained()`
-        model_to_save = (
-            model.module if hasattr(model, "module") else model
-        )  # Take care of distributed/parallel training
-        model_to_save.save_pretrained(args.output_dir)
-        tokenizer.save_pretrained(args.output_dir)
+        best_dir = os.path.join(args.output_dir, "best")
+        if os.path.exists(best_dir):
+            copy_tree(best_dir, args.output_dir)
+        else:
+            logger.info("Saving model checkpoint to %s", args.output_dir)
+            # Save a trained model, configuration and tokenizer using `save_pretrained()`.
+            # They can then be reloaded using `from_pretrained()`
+            model_to_save = (
+                model.module if hasattr(model, "module") else model
+            )  # Take care of distributed/parallel training
+            model_to_save.save_pretrained(args.output_dir)
+            tokenizer.save_pretrained(args.output_dir)
 
         # Good practice: save your training arguments together with the trained model
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
