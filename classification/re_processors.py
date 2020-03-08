@@ -13,8 +13,7 @@ from classification.re_config import (START_E1,
                                       START_E2,
                                       END_E2)
 
-SetType = Literal["train", "distant", "train_eval", "full_test_eval", "full_test_eval"]
-
+SetType = Literal["train", "distant", "dev_eval", "full_dev_eval", "full_test_eval"]
 logger = logging.getLogger(__name__)
 
 JsonObject = Dict[str, Any]

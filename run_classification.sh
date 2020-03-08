@@ -3,10 +3,10 @@
 
 start=`date +%s`
 # activate some conda environment
-# source activate hugging_face
+source activate hugging_face
 
 # change working dir
-# cd matan/dev/relation_generation_using_gpt2
+cd matan/dev/relation_generation_using_gpt2
 
 relation_name=$(jq -r ".relation_name" "$OTO_INPUT")
 num_positive_examples=$(jq ".num_positive_examples" "$OTO_INPUT")
@@ -46,28 +46,30 @@ fi
 
 output_dir=classification_outputs/$relation_name/$training_method/"$num_positive_examples"_"$ratio_negative_examples"
 
-# python run_classification.py \
-#   --data_dir $data_dir \
-#   --model_type roberta-rc \
-#   --model_name_or_path roberta-large \
-#   --task_name $task \
-#   --output_dir $output_dir \
-#   "$do_train_type" \
-#   --do_full_dev_eval \
-#   --do_full_test_eval \
-#   --evaluate_during_training \
-#   --patience 6 \
-#   --relation_name $relation_name \
-#   --num_positive_examples $num_positive_examples \
-#   --ratio_negative_examples $ratio_negative_examples \
-#   --type_independent_neg_sample \
-#   --num_train_epochs 1 \
-#   --logging_steps $logging_steps \
-#   --warmup_steps 100 \
-#   --per_gpu_train_batch_size 8 \
-#   --learning_rate 2e-5 \
-#   --seed $seed \
-#   --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$ratio_negative_examples".txt 2>&1
+python run_classification.py \
+  --data_dir $data_dir \
+  --model_type roberta-rc \
+  --model_name_or_path roberta-large \
+  --task_name $task \
+  --output_dir $output_dir \
+  "$do_train_type" \
+  --do_eval_dev \
+  --do_full_dev_eval \
+  --do_full_test_eval \
+  --evaluate_during_training \
+  --patience 6 \
+  --relation_name $relation_name \
+  --num_positive_examples $num_positive_examples \
+  --ratio_negative_examples $ratio_negative_examples \
+  --type_independent_neg_sample \
+  --num_train_epochs 200 \
+  --logging_steps $logging_steps \
+  --fp16 \
+  --warmup_steps 100 \
+  --per_gpu_train_batch_size 8 \
+  --learning_rate 2e-5 \
+  --seed $seed \
+  --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$ratio_negative_examples".txt 2>&1
 
 python -m scripts.check_num_of_examples $data_dir $OTO_BACKUP/num_examples.json
 
