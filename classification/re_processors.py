@@ -292,7 +292,12 @@ class TitleNames:
     def __call__(self, task: Task, set_type: SetType, t: int):
         if task == "docred":
             from classification.docred_config import DEV_TITLES, TRAIN_EVAL_TITLES
-            return DEV_TITLES[t] if set_type == 'full_dev_eval' else TRAIN_EVAL_TITLES[t]
+            if set_type == 'full_dev_eval':
+                return TRAIN_EVAL_TITLES[t]
+            elif set_type == 'full_test_eval':
+                return DEV_TITLES[t]
+            else:
+                raise ValueError("Set type not found: %s" % (set_type))
         elif task == 'tacred':
             return int(t) # The name is the ID
         else:

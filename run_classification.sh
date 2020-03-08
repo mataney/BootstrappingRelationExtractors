@@ -101,7 +101,7 @@ jq -n --slurpfile dev_eval_content "$output_dir/full_dev_eval_results.json" \
 
 end=`date +%s`
 secs=$((end-start))
-time="$(($secs%60))s"
+time="$(($secs/3600))h$(($secs%3600/60))m$(($secs%60))s"
 
 jq -n --arg time $time \
   --slurpfile dev_eval_scores "$output_dir/full_dev_eval_scores.json" \

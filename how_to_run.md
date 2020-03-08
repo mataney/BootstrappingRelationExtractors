@@ -15,8 +15,8 @@ bash run_classification.sh
 #### Define Arguments
 Explicitly:
 ```
-[{"relation_name": "founded_by", "num_positive_examples": 5, "ratio_negative_examples": 10},
-{"relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
+[{"task": "docred", "relation_name": "founded_by", "num_positive_examples": 5, "ratio_negative_examples": 10},
+{"task": "docred", "relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
 ```
 
 Running classification for all relations as a grid:
