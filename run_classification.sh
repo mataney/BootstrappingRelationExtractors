@@ -17,7 +17,7 @@ seed=$(jq ".seed" "$OTO_INPUT")
 task=$(jq -r ".task" "$OTO_INPUT")
 
 if [[ $seed = null ]]; then seed=1; fi
-if [[ $logging_steps = null ]]; then logging_steps=100; fi
+if [[ $logging_steps = null ]]; then logging_steps=$num_positive_examples; fi
 
 if [[ $training_method = null ]]; then training_method="annotated"; fi
 if [[ $training_method = "annotated" ]]
@@ -57,7 +57,7 @@ python run_classification.py \
   --do_full_dev_eval \
   --do_full_test_eval \
   --evaluate_during_training \
-  --patience 6 \
+  --patience 10 \
   --relation_name $relation_name \
   --num_positive_examples $num_positive_examples \
   --ratio_negative_examples $ratio_negative_examples \
@@ -113,7 +113,7 @@ jq -n --arg time $time \
     test_F1:$test_eval_scores[0].F1,
     test_precision:$test_eval_scores[0].precision,
     test_recall:$test_eval_scores[0].recall,
-    confidence:$test_eval_scores[0].best_confidence,
+    confidence:$dev_eval_scores[0].best_confidence,
     dev_F1:$dev_eval_scores[0].F1,
     dev_precision:$dev_eval_scores[0].precision,
     dev_recall:$dev_eval_scores[0].recall,

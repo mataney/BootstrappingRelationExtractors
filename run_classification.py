@@ -301,12 +301,16 @@ def train(args, train_dataset, model, tokenizer):
 
                     best_dir = os.path.join(args.output_dir, "best")
                     if not os.path.exists(best_dir):
+                        logger.info("Writing first model to best dir.")
                         os.makedirs(best_dir)
                         copy_tree(output_dir, best_dir)
-                    elif results[args.save_best_wrt_metric] > torch.load(os.path.join(output_dir, "results.bin"))[args.save_best_wrt_metric]:
+                        logger.info("Done writing first model to best dir.")
+                    elif results[args.save_best_wrt_metric] > torch.load(os.path.join(best_dir, "results.bin"))[args.save_best_wrt_metric]:
+                        logger.info("Writing new best model to best dir.")
                         remove_tree(best_dir)
                         os.makedirs(best_dir)
                         copy_tree(output_dir, best_dir)
+                        logger.info("Done writing new best model to best dir.")
 
                     if args.save_only_best:
                         remove_tree(output_dir)

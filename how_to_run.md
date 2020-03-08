@@ -19,9 +19,14 @@ Explicitly:
 {"task": "docred", "relation_name": "founded_by", "num_positive_examples": 20, "ratio_negative_examples": 10}]
 ```
 
-Running classification for all relations as a grid:
+Running classification for all relations as a grid for docred:
 ```
-{"relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
+{"task": ["docred"], "relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
+```
+
+Running classification for all relations as a grid for TACRED:
+```
+{"task": ["tacred"], "relation_name": ["per:children", "per:origin", "per:date_of_birth", "org:dissolved", "org:founded_by", "org:country_of_headquarters", "per:country_of_birth", "per:religion", "per:spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
 
 Or for Distant Supervision:
@@ -31,7 +36,7 @@ Or for Distant Supervision:
 
 #### Out Vars:
 ```
-dev_F1, dev_precision, dev_recall, confidence, time
+test_F1, test_precision, test_recall, confidence, time
 ```
  (The rest will be saved in RAW)
 
