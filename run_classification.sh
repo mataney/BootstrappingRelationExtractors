@@ -17,7 +17,7 @@ seed=$(jq ".seed" "$OTO_INPUT")
 task=$(jq -r ".task" "$OTO_INPUT")
 
 if [[ $seed = null ]]; then seed=1; fi
-if [[ $logging_steps = null ]]; then logging_steps=$num_positive_examples; fi
+if [[ $logging_steps = null ]]; then logging_steps=$(( 100 < $num_positive_examples ? 100 : $num_positive_examples )); fi
 
 if [[ $training_method = null ]]; then training_method="annotated"; fi
 if [[ $training_method = "annotated" ]]
@@ -26,6 +26,9 @@ then
 elif [[ $training_method = "distant" ]]
 then
   do_train_type='--do_distant_train'
+elif [[ $training_method = "search" ]]
+then
+  do_train_type='--do_search_train'
 else
   echo "Wrong training method"
 fi
