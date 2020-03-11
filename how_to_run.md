@@ -24,15 +24,16 @@ Running classification for all relations as a grid for docred:
 {"task": ["docred"], "relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
 
+Or for Distant Supervision:
+```
+{"task": ["docred"], "training_method": ["distant"], "relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [100, 500, 1000], "ratio_negative_examples": [10], "seed": [1,2,3]}
+```
+
 Running classification for all relations as a grid for TACRED:
 ```
 {"task": ["tacred"], "relation_name": ["per:children", "per:origin", "per:date_of_birth", "org:dissolved", "org:founded_by", "org:country_of_headquarters", "per:country_of_birth", "per:religion", "per:spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
 
-Or for Distant Supervision:
-```
-{"training_method": ["distant"], "relation_name": ["child", "country_of_origin", "date_of_birth", "dissolved,_abolished_or_demolished", "founded_by", "headquarters_location", "place_of_birth", "religion", "spouse"], "num_positive_examples": [100, 500, 1000], "ratio_negative_examples": [10], "logging_steps": [100]}
-```
 
 #### Out Vars:
 ```

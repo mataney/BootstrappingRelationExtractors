@@ -66,6 +66,15 @@ class DistantDocREDExample(DocREDExample):
         for evidence in DocREDUtils.sents_entities_share(example_json, relation):
             yield cls(title, example_json, relation, evidence, label)
 
+class DocREDSearchExample(InputExample):
+    def __init__(self, id: int, text: str, label: str) -> None:
+        self.title = id
+        self.evidence = [0]
+        self.text = text
+        self.label = label
+        self.h = -1
+        self.t = -1
+
 class DocREDUtils:
     @staticmethod
     def evidences_with_entities(example_json: JsonObject, relation: Relation) -> List[int]:
@@ -146,6 +155,10 @@ class DocREDProcessor(REProcessor):
                     examples = builder(title_id, doc, relation, label=self._relation_label(relation))
                     for example in examples:
                         yield example
+
+    def _create_search_examples(self, docs: List[str]) -> List[InputExample]:
+        for doc in docs:
+            yield DocREDSearchExample(int(doc[0]), doc[1], doc[2])
 
     def _create_all_possible_dev_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples of all possible entities for dev sets"""

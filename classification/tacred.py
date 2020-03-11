@@ -41,6 +41,12 @@ class TACREDExample(InputExample):
     def build(cls: Type[T], id: int, example_json: JsonObject, label: str) -> T:
         return cls(id, example_json, label)
 
+class TACREDSearchExample(InputExample):
+    def __init__(self, id: int, text: str, label: str) -> None:
+        self.id = id
+        self.text = text
+        self.label = label
+
 class TACREDProcessor(REProcessor):
     def __init__(self, relation_name: str, num_positive: int = None, negative_ratio: int = None, type_independent_neg_sample: bool = True) -> None:
         super().__init__(relation_name, num_positive, negative_ratio, type_independent_neg_sample)
@@ -67,6 +73,10 @@ class TACREDProcessor(REProcessor):
             label = self._relation_label(relation['relation'])
             if self._same_entity_types_relation(relation):
                 yield TACREDExample.build(id, relation, label)
+
+    def _create_search_examples(self, docs: List[str]) -> List[InputExample]:
+        for doc in docs:
+            yield TACREDSearchExample(int(doc[0]), doc[1], doc[2])
 
     def _relation_label(self, relation_name: str) -> str:
         return relation_name if self._positive_relation(relation_name) else NEGATIVE_LABEL

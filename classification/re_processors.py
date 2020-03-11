@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import os
@@ -52,6 +53,8 @@ class REProcessor(DataProcessor):
             return self.get_train_examples(data_dir)
         elif set_type == "distant":
             return self.get_distant_train_examples(data_dir)
+        elif set_type == "search":
+            return self.get_search_train_examples(data_dir)
         elif set_type == "dev_eval":
             return self.get_eval_examples(data_dir)
         elif set_type == "full_dev_eval":
@@ -64,6 +67,10 @@ class REProcessor(DataProcessor):
     def get_train_examples(self, data_dir: str) -> List[InputExample]:
         """Gets a collection of `InputExample`s for the train set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train")
+        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
+
+    def get_search_train_examples(self, data_dir: str) -> List[InputExample]:
+        examples = self._create_search_examples(self._read_tsv(os.path.join(data_dir, 'search', f"{self.positive_label}")))
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def get_eval_examples(self, data_dir: str) -> List[InputExample]:
@@ -107,7 +114,7 @@ class REProcessor(DataProcessor):
                          builder: Builder = None) -> Iterator[InputExample]:
         raise NotImplementedError
 
-    def get_distant_train_examples(self, data_dir: str) -> List[InputExample]:
+    def _create_search_examples(self, documents: List[str]) -> List[InputExample]:
         raise NotImplementedError
 
     def _create_all_possible_dev_examples(self,
@@ -115,11 +122,24 @@ class REProcessor(DataProcessor):
                                           set_type: SetType) -> Iterator[InputExample]:
         raise NotImplementedError
 
+    def get_distant_train_examples(self, data_dir: str) -> List[InputExample]:
+        raise NotImplementedError
+
     @classmethod
     def _read_json(cls, input_file: str) -> List[JsonObject]:
         """Reads a tab separated value file."""
         with open(input_file, "r", encoding="utf-8") as f:
             return list(json.load(f))
+
+    @classmethod
+    def _read_tsv(cls, input_file: str) -> List[JsonObject]:
+        lines = []
+        with open(input_file, "r", encoding="utf-8") as f:
+            reader = csv.reader(f, delimiter='\t')
+            for row in reader:
+                lines.append(row)
+
+        return lines
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""

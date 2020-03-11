@@ -1,4 +1,5 @@
 import json
+import pytest
 
 from classification.tacred import TACREDProcessor, TACREDExample
 
@@ -21,6 +22,11 @@ class TestTACREDProcessor:
         assert len([e for e in examples if e.label == "org:founded_by"]) == 68
         assert len([e for e in examples if e.label != "org:founded_by"]) == 1190
         assert len(examples) == 68 + 1190
+
+    def test_get_search_examples(self):
+        processor = TACREDProcessor('per:children', 1000, 10)
+        processor.get_examples_by_set_type('search', data_dir)
+        assert True
 
 class TestTACREDExample:
     def test_init(self):
