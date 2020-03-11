@@ -47,22 +47,23 @@ PATTERNS = {
         ],
     "org:dissolved": [
         "{e1:e=ORGANIZATION Microsoft} was [t:w=bust|closed|expired|dissolved|disbanded|bankrupted|dismantled|crumbled|ceased|collapsed closed] in {e2:e=DATE 1997} .",
-        "{e1:e=ORGANIZATION Microsoft} announced [t:w=extradition|bankruptcy|bankrupcy bankruptcy] in {e2:e=DATE 1997}.",
+        "{e1:e=ORGANIZATION Microsoft} announced [t:w=extradition|bankruptcy|bankrupcy|liquidation bankruptcy] in {e2:e=DATE 1997}.",
+        "{e1:e=ORGANIZATION Microsoft} filed for [t:w=extradition|bankruptcy|bankrupcy|liquidation bankruptcy] in {e2:e=DATE 1997}. ",
         ],
     "org:founded_by": [
-        "{e2:e=PERSON Mary} [t:w=founder|co-founder|cofounder|creator founder] of {e1:e=ORGANIZATION Microsoft} likes running.",
+        "{e1:e=ORGANIZATION Microsoft} [t:w=founder|co-founder|cofounder|creator founder] {e2:e=PERSON Mary} likes running.",
         "{e2:e=PERSON Mary} , who [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
         "{e1:e=ORGANIZATION Microsoft} was [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] [$ by] {e2:e=PERSON Mary}.",
         ],
     "org:country_of_headquarters": [
         "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} .",
         "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
-        "{e1:e=ORGANIZATION Microsoft} have [t:w=based|headquarter|headquartered|headquarters|base headquarters] in {e2:e=LOCATION England} .",
+        "{e1:e=ORGANIZATION Microsoft}, [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
         ],
     "per:country_of_birth": [
         "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
         "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
-        "{e2:e=LOCATION England} [t:w=born born] {e1:e=PERSON John} is thirsty .",
+        "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
         ],
     "per:religion": [
         "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
@@ -93,12 +94,12 @@ NEGATIVE_PATTERNS = {
 }
 
 
-LIMIT = 5
+LIMIT = -1
 OUTPUT_DIR = 'scripts/search_results'
 
 def main():
     positive_outfiles = download_from_spike_search(PATTERNS, LIMIT)
-    negative_outfiles = download_from_spike_search(NEGATIVE_PATTERNS, LIMIT*30, use_odinson=True)
+    negative_outfiles = download_from_spike_search(NEGATIVE_PATTERNS, 100000, use_odinson=True)
     search_files = merge_files(positive_outfiles, negative_outfiles)
     prepare_examples(search_files)
 
@@ -136,9 +137,7 @@ def seperate_entities(data):
     else:
         return False
 
-def prepare_examples(search_files): #TODO required better name
-    max_positive_examples = 10000
-
+def prepare_examples(search_files):
     for relation, relation_search_files in search_files.items():
         all_data = []
         for i, search_file in enumerate(relation_search_files):
@@ -160,7 +159,7 @@ def prepare_examples(search_files): #TODO required better name
                 all_data.append({'text': text, 'label': label, 'pattern': pattern, 'sentence_id': d['sentence_id']})
 
         all_data = remove_same_sent_id(all_data)
-        all_data = sample(all_data, max_positive_examples, 10)
+        all_data = sample(all_data, num_positive=None, negative_ratio=10)
 
         write_to_datasets(all_data, relation)
         
@@ -245,7 +244,9 @@ def download_from_spike_search(patterns_dict, limit, use_odinson=False):
             url = 'http://35.246.149.250:5000'
             search_query_api = '/api/3/search/query'
             search_query_params = query_params(pattern, use_odinson)
-            download_tsv_params = f"?limit={limit}&sentence_id=true&sentence_text=true&capture_indices=true"
+            download_tsv_params = f"?sentence_id=true&sentence_text=true&capture_indices=true"
+            if limit > 0:
+                download_tsv_params += f"&limit={limit}"
 
             request = requests.post(url=url + search_query_api,
                                     headers={"Content-Type": "application/json"},
@@ -262,7 +263,7 @@ def download_from_spike_search(patterns_dict, limit, use_odinson=False):
 
     return outfiles
 
-#TODO, some of the results returns low numbers, redo them.
+#TODO run NER - This is not a must, because I can make it learn city of birth as well as country of birth but in inference I will do the NER. When I;m not running NER before it gives it more examples.
 
 if __name__ == "__main__":
     main()
