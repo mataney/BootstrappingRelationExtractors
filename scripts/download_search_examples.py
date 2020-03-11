@@ -34,63 +34,52 @@ TACRED_DOCRED_RELATIONS_MAPPING = {
     "NOTA": "NOTA"
 }
 
-# PATTERNS = {
-#     "per:children": [
-#         "{e1:e=PERSON John} 's [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
-#         "{e1:e=PERSON John} is survived by her [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
-#         "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
-#         ],
-#     "per:date_of_birth": [
-#         "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
-#         "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
-#         "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
-#         ],
-#     "org:dissolved": [
-#         "{e1:e=ORGANIZATION Microsoft} was [t:w=bust|closed|expired|dissolved|disbanded|bankrupted|dismantled|crumbled|ceased|collapsed closed] in {e2:e=DATE 1997} .",
-#         "{e1:e=ORGANIZATION Microsoft} announced [t:w=extradition|bankruptcy|bankrupcy bankruptcy] in {e2:e=DATE 1997}.",
-#         ],
-#     "org:founded_by": [
-#         "{e2:e=PERSON Mary} [t:w=founder|co-founder|cofounder|creator founder] of {e1:e=ORGANIZATION Microsoft} likes running.",
-#         "{e2:e=PERSON Mary} , who [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
-#         "{e1:e=ORGANIZATION Microsoft} was [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] [$ by] {e2:e=PERSON Mary}.",
-#         ],
-#     "org:country_of_headquarters": [
-#         "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} .",
-#         "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
-#         "{e1:e=ORGANIZATION Microsoft} have [t:w=based|headquarter|headquartered|headquarters|base headquarters] in {e2:e=LOCATION England} .",
-#         ],
-#     "per:country_of_birth": [
-#         "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
-#         "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
-#         "{e2:e=LOCATION England} [t:w=born born] {e1:e=PERSON John} is thirsty .",
-#         ],
-#     "per:religion": [
-#         "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
-#         "[e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish] {e1:e=PERSON John} is walking down the street.",
-#         ],
-#     "per:spouse": [
-#         "{e1:e=PERSON John} 's [t:w=ex-husband|ex-wife|husband|widow|widower|wife|sweetheart|bride wife], {e2:e=PERSON Mary} , died in 1991 .",
-#         "{e1:e=PERSON John} [t:w=divorce|divorced|married|marry|wed|divorcing married] {e2:e=PERSON Mary}",
-#         "{e1:e=PERSON John} [t:w=married|marry|wed married] to {e2:e=PERSON Mary}",
-#         ],
-#     "per:origin": [
-#         "{e2:e=MISC Scottish} {e1:e=PERSON Mary} is high.",
-#         "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} descent.",
-#         "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} [t:w=descent|nationality|ancestry|heritage|roots|blood|maternal|birth|descends|paternal|descended|raised|born|background|descend|origins|lineage|origin|ancestors|descendant|ancestral|country descent].",
-#         "{e1:e=PERSON Mary} is originally from {e2:e=LOCATIION Scotland}." #Check what's the best from these
-#         ]
-#     }
-
 PATTERNS = {
     "per:children": [
         "{e1:e=PERSON John} 's [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
         "{e1:e=PERSON John} is survived by her [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
+        "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
         ],
     "per:date_of_birth": [
         "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
         "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
+        "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
         ],
-}
+    "org:dissolved": [
+        "{e1:e=ORGANIZATION Microsoft} was [t:w=bust|closed|expired|dissolved|disbanded|bankrupted|dismantled|crumbled|ceased|collapsed closed] in {e2:e=DATE 1997} .",
+        "{e1:e=ORGANIZATION Microsoft} announced [t:w=extradition|bankruptcy|bankrupcy bankruptcy] in {e2:e=DATE 1997}.",
+        ],
+    "org:founded_by": [
+        "{e2:e=PERSON Mary} [t:w=founder|co-founder|cofounder|creator founder] of {e1:e=ORGANIZATION Microsoft} likes running.",
+        "{e2:e=PERSON Mary} , who [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
+        "{e1:e=ORGANIZATION Microsoft} was [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] [$ by] {e2:e=PERSON Mary}.",
+        ],
+    "org:country_of_headquarters": [
+        "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} .",
+        "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
+        "{e1:e=ORGANIZATION Microsoft} have [t:w=based|headquarter|headquartered|headquarters|base headquarters] in {e2:e=LOCATION England} .",
+        ],
+    "per:country_of_birth": [
+        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
+        "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
+        "{e2:e=LOCATION England} [t:w=born born] {e1:e=PERSON John} is thirsty .",
+        ],
+    "per:religion": [
+        "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
+        "[e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish] {e1:e=PERSON John} is walking down the street.",
+        ],
+    "per:spouse": [
+        "{e1:e=PERSON John} 's [t:w=ex-husband|ex-wife|husband|widow|widower|wife|sweetheart|bride wife], {e2:e=PERSON Mary} , died in 1991 .",
+        "{e1:e=PERSON John} [t:w=divorce|divorced|married|marry|wed|divorcing married] {e2:e=PERSON Mary}",
+        "{e1:e=PERSON John} [t:w=married|marry|wed married] to {e2:e=PERSON Mary}",
+        ],
+    "per:origin": [
+        "{e2:e=MISC Scottish} {e1:e=PERSON Mary} is high.",
+        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} descent.",
+        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} [t:w=descent|nationality|ancestry|heritage|roots|blood|maternal|birth|descends|paternal|descended|raised|born|background|descend|origins|lineage|origin|ancestors|descendant|ancestral|country descent].",
+        "{e1:e=PERSON Mary} is originally from {e2:e=LOCATIION Scotland}." #Check what's the best from these
+        ]
+    }
 
 NEGATIVE_PATTERNS = {
     'PERSON:PERSON': ["(?<e1> [entity=PERSON]+) [entity!=PERSON]+ (?<e2> [entity=PERSON]+) #e e1 e2"],
