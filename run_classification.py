@@ -202,7 +202,7 @@ def train(args, train_dataset, model, tokenizer):
         epochs_trained, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0],
     )
     set_seed(args)  # Added here for reproductibility
-    best_f1, n_no_improve = 0, 0
+    best_stopping_metric, n_no_improve = float("inf"), 0
     patience_ended = False
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
@@ -259,8 +259,8 @@ def train(args, train_dataset, model, tokenizer):
                             logs[eval_key] = value
 
                     if args.patience > 0:
-                        if results["f1"] > best_f1:
-                            best_f1 = results["f1"]
+                        if logs[args.early_stopping_metric] < best_stopping_metric:
+                            best_stopping_metric = logs[args.early_stopping_metric]
                             n_no_improve = 0
                         else:
                             n_no_improve += 1
@@ -305,7 +305,7 @@ def train(args, train_dataset, model, tokenizer):
                         os.makedirs(best_dir)
                         copy_tree(output_dir, best_dir)
                         logger.info("Done writing first model to best dir.")
-                    elif results[args.save_best_wrt_metric] > torch.load(os.path.join(best_dir, "results.bin"))[args.save_best_wrt_metric]:
+                    elif results[args.early_stopping_metric] > torch.load(os.path.join(best_dir, "results.bin"))[args.early_stopping_metric]:
                         logger.info("Writing new best model to best dir.")
                         remove_tree(best_dir)
                         os.makedirs(best_dir)
@@ -410,13 +410,14 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
         positive_label_index = 0
         result = compute_metrics(eval_task, preds, out_label_ids, positive_label_index)
         results.update(result)
+        results['loss'] = eval_loss
 
         output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
         with open(output_eval_file, "w") as writer:
             logger.info("***** Eval results {} *****".format(prefix))
-            for key in sorted(result.keys()):
-                logger.info("  %s = %s", key, str(result[key]))
-                writer.write("%s = %s\n" % (key, str(result[key])))
+            for key in sorted(results.keys()):
+                logger.info("  %s = %s", key, str(results[key]))
+                writer.write("%s = %s\n" % (key, str(results[key])))
 
         if (args.task_name == "docred" or args.task_name == "tacred") and 'full' in set_type:
             full_eval_results = []
@@ -622,7 +623,7 @@ def main():
     parser.add_argument("--logging_steps", type=int, default=500, help="Log every X updates steps.")
     parser.add_argument("--save_steps", type=int, default=500, help="Save checkpoint every X updates steps.")
     parser.add_argument("--save_only_best", action="store_true", help="No need to keep all checkpoints, just best one.")
-    parser.add_argument("--save_best_wrt_metric", type=str, default="f1", help="What is the metric comparing checkpoints to")
+    parser.add_argument("--early_stopping_metric", type=str, default="eval_loss", help="What is the metric comparing checkpoints to. The lower the better, so use loss for example, not F1.")
     parser.add_argument(
         "--eval_all_checkpoints",
         action="store_true",
