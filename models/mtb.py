@@ -45,12 +45,39 @@ class RobertaForRelationClassification(BertPreTrainedModel):
 
         outputs = (logits,) + outputs[2:]
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
+            use_PUloss = False
+            if use_PUloss:
+                loss_fct = PULoss()
+            else:
+                loss_fct = CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             outputs = (loss,) + outputs
 
+
         return outputs  # (loss), logits, (hidden_states), (attentions)
-    
+
+class PULoss(nn.Module):
+    def __init__(self):
+        super(PULoss, self).__init__()
+        self.positive_label = 0
+        self.loss = lambda x: torch.sigmoid(-x)
+        self.prior = 0.5
+
+    def forward(self, logits, labels):
+        labels = labels.unsqueeze(1)
+        positive_mask = (labels == self.positive_label).float()
+        unlabeled_mask = 1 - positive_mask
+
+        positive_loss = self.loss(logits)
+        unlabeled_loss = self.loss(-logits)
+
+        n_positive = max(1., positive_mask.sum().item())
+        n_unlabeled = max(1., unlabeled_mask.sum().item())
+
+        positive_risk = torch.sum(self.prior * positive_mask * positive_loss / n_positive)
+        negative_risk = torch.sum((unlabeled_mask / n_unlabeled - self.prior * positive_mask / n_positive) * unlabeled_loss)
+
+        return positive_risk + negative_risk
 
 class MTBClassificationHead(nn.Module):
     """
@@ -75,4 +102,3 @@ class MTBClassificationHead(nn.Module):
         x = self.dropout(x)
         x = self.out_proj(x)
         return x
-  
