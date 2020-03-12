@@ -96,6 +96,7 @@ NEGATIVE_PATTERNS = {
 
 LIMIT = -1
 OUTPUT_DIR = 'scripts/search_results'
+URL = 'http://35.246.164.171:5000'
 
 def main():
     positive_outfiles = download_from_spike_search(PATTERNS, LIMIT)
@@ -241,19 +242,18 @@ def download_from_spike_search(patterns_dict, limit, use_odinson=False):
     outfiles = defaultdict(list)
     for relation, patterns in tqdm(patterns_dict.items()):
         for id, pattern in enumerate(patterns):
-            url = 'http://35.246.149.250:5000'
             search_query_api = '/api/3/search/query'
             search_query_params = query_params(pattern, use_odinson)
             download_tsv_params = f"?sentence_id=true&sentence_text=true&capture_indices=true"
             if limit > 0:
                 download_tsv_params += f"&limit={limit}"
 
-            request = requests.post(url=url + search_query_api,
+            request = requests.post(url=URL + search_query_api,
                                     headers={"Content-Type": "application/json"},
                                     data=json.dumps(search_query_params))
             
             tsv_location = request.headers['TSV-Location']
-            tsv_url = url + tsv_location + download_tsv_params
+            tsv_url = URL + tsv_location + download_tsv_params
   
             print(f'Downloading query: {pattern} for relation: {relation}')
             outfile = f'{OUTPUT_DIR}/raw-{relation}-{id}'
