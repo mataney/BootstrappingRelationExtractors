@@ -7,3 +7,5 @@ data/
 runs/
 classification_outputs/
 log*
+
+scripts/search_results/

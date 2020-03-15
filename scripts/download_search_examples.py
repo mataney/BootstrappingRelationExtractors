@@ -78,7 +78,6 @@ PATTERNS = {
         "{e2:e=MISC Scottish} {e1:e=PERSON Mary} is high.",
         "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} descent.",
         "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} [t:w=descent|nationality|ancestry|heritage|roots|blood|maternal|birth|descends|paternal|descended|raised|born|background|descend|origins|lineage|origin|ancestors|descendant|ancestral|country descent].",
-        "{e1:e=PERSON Mary} is originally from {e2:e=LOCATIION Scotland}." #Check what's the best from these
         ]
     }
 
@@ -90,7 +89,6 @@ NEGATIVE_PATTERNS = {
     'ORGANIZATION:LOCATION': ["(?<e1> [entity=ORGANIZATION]+) []+ (?<e2> [entity=LOCATION]+) #e e1 e2", "(?<e1> [entity=LOCATION]+) []+ (?<e2> [entity=ORGANIZATION]+) #e e1 e2"],
     'PERSON:LOCATION': ["(?<e1> [entity=PERSON]+) []+ (?<e2> [entity=LOCATION]+) #e e1 e2", "(?<e1> [entity=LOCATION]+) []+ (?<e2> [entity=PERSON]+) #e e1 e2"],
     'PERSON:MISC': ["(?<e1> [entity=PERSON]+) []+ (?<e2> [entity=MISC]+) #e e1 e2", "(?<e1> [entity=MISC]+) []+ (?<e2> [entity=PERSON]+) #e e1 e2"],
-    'PERSON:LOCATIION': ["(?<e1> [entity=PERSON]+) []+ (?<e2> [entity=LOCATIION]+) #e e1 e2", "(?<e1> [entity=LOCATIION]+) []+ (?<e2> [entity=PERSON]+) #e e1 e2"],
 }
 
 
