@@ -296,7 +296,7 @@ def train(args, train_dataset, model, tokenizer):
                     torch.save(optimizer.state_dict(), os.path.join(output_dir, "optimizer.pt"))
                     torch.save(scheduler.state_dict(), os.path.join(output_dir, "scheduler.pt"))
                     assert args.logging_steps == args.save_steps
-                    torch.save(results, os.path.join(output_dir, "results.bin"))
+                    torch.save(logs, os.path.join(output_dir, "results.bin"))
                     logger.info("Saving optimizer and scheduler states to %s", output_dir)
 
                     best_dir = os.path.join(args.output_dir, "best")
@@ -305,7 +305,7 @@ def train(args, train_dataset, model, tokenizer):
                         os.makedirs(best_dir)
                         copy_tree(output_dir, best_dir)
                         logger.info("Done writing first model to best dir.")
-                    elif results[args.early_stopping_metric] > torch.load(os.path.join(best_dir, "results.bin"))[args.early_stopping_metric]:
+                    elif logs[args.early_stopping_metric] > torch.load(os.path.join(best_dir, "results.bin"))[args.early_stopping_metric]:
                         logger.info("Writing new best model to best dir.")
                         remove_tree(best_dir)
                         os.makedirs(best_dir)
