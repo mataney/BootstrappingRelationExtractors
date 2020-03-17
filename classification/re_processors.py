@@ -83,7 +83,7 @@ class REProcessor(DataProcessor):
                                                         num_positive,
                                                         self.positive_label)
         negative_examples = self.sample_search_examples(data_dir,
-                                                        negative_ratio,
+                                                        len(positive_examples) * negative_ratio,
                                                         self.relations_entity_types_for_search(self.positive_label))
         return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
 
