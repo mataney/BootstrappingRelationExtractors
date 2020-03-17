@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar
 from typing_extensions import TypedDict
 
 from transformers.data.processors.utils import InputExample, InputFeatures
-from classification.docred_config import RELATION_MAPPING, DOCRED_TACRED_RELATIONS_MAPPING
+from classification.docred_config import RELATION_MAPPING, DOCRED_TACRED_RELATIONS_MAPPING, TACRED_DOCRED_RELATIONS_MAPPING
 from classification.re_processors import REProcessor, JsonObject, wrap_text, SetType, NEGATIVE_LABEL
 
 logger = logging.getLogger(__name__)
@@ -219,10 +219,13 @@ class DocREDProcessor(REProcessor):
             reader = csv.reader(f, delimiter='\t')
             for i, doc in enumerate(reader):
                 if i in row_ids:
-                    yield DocREDSearchExample(i, doc[0], doc[1])
+                    yield DocREDSearchExample(i, doc[0], self.reverse_relation_name_adapter(doc[1]))
 
     def relation_name_adapter(self, relation: str):
         return DOCRED_TACRED_RELATIONS_MAPPING[relation]
+
+    def reverse_relation_name_adapter(self, relation: str):
+        return TACRED_DOCRED_RELATIONS_MAPPING[relation]
 
 class DocREDInputFeatures(InputFeatures):
     def __init__(self,
