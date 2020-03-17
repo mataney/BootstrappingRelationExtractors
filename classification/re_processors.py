@@ -90,7 +90,7 @@ class REProcessor(DataProcessor):
     def sample_search_examples(self, data_dir, num_sample, relation):
         relation = self.relation_name_adapter(relation)
         def count_search_results(file: str, relation_name: str):
-            return json.load(open(file, 'r'))[relation_name]
+            return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
 
         count_results = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
         assert num_sample < count_results

@@ -215,7 +215,7 @@ class DocREDProcessor(REProcessor):
         return self.positive_label if self._positive_relation(relation) else NEGATIVE_LABEL
 
     def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
-        with open(search_file, 'r') as f:
+        with open(search_file, 'r', encoding="utf-8") as f:
             reader = csv.reader(f, delimiter='\t')
             for i, doc in enumerate(reader):
                 if i in row_ids:
