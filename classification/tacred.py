@@ -1,10 +1,10 @@
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar
-from typing_extensions import Literal, TypedDict
+import csv
+from typing import Any, Callable, Dict, Iterator, List, Type, TypeVar
+from typing_extensions import TypedDict
+
 from classification.re_processors import REProcessor, JsonObject, wrap_text, NEGATIVE_LABEL, SetType
-
-from transformers.data.processors.utils import InputExample, InputFeatures
-
 from classification.tacred_config import RELATION_MAPPING
+from transformers.data.processors.utils import InputExample, InputFeatures
 
 Relation = TypedDict('Relation', id=str, docid=str, relation=str, token=List[str], subj_start=int, subj_end=int, obj_start=int, obj_end=int, subj_type=str, obj_type=str, stanford_pos=List[str], stanford_ner=List[str], stanford_head=List[int], stanford_deprel=List[str])
 T = TypeVar('T', bound='TACREDExample')
@@ -74,9 +74,15 @@ class TACREDProcessor(REProcessor):
             if self._same_entity_types_relation(relation):
                 yield TACREDExample.build(id, relation, label)
 
-    def _create_search_examples(self, docs: List[str]) -> List[InputExample]:
-        for doc in docs:
-            yield TACREDSearchExample(int(doc[0]), doc[1], doc[2])
+    def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
+        with open(search_file, 'r') as f:
+            reader = csv.reader(f, delimiter='\t')
+            for i, doc in enumerate(reader):
+                if i in row_ids:
+                    yield TACREDSearchExample(i, doc[0], doc[1])
+
+    def relation_name_adapter(self, relation: str):
+        return relation
 
     def _relation_label(self, relation_name: str) -> str:
         return relation_name if self._positive_relation(relation_name) else NEGATIVE_LABEL

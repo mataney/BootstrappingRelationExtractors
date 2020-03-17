@@ -5,6 +5,7 @@ import os
 from random import shuffle
 from typing import Any, Callable, Dict, Iterator, List
 from typing_extensions import Literal
+from random import sample
 
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 
@@ -12,7 +13,8 @@ from transformers.data.processors.utils import DataProcessor, InputExample
 from classification.re_config import (START_E1,
                                       END_E1,
                                       START_E2,
-                                      END_E2)
+                                      END_E2, 
+                                      RELATIONS_ENTITY_TYPES_FOR_SEARCH)
 
 SetType = Literal["train", "distant", "dev_eval", "full_dev_eval", "full_test_eval"]
 logger = logging.getLogger(__name__)
@@ -70,8 +72,43 @@ class REProcessor(DataProcessor):
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def get_search_train_examples(self, data_dir: str) -> List[InputExample]:
-        examples = self._create_search_examples(self._read_tsv(os.path.join(data_dir, 'search', f"{self.positive_label}")))
-        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
+        return self.create_search_examples(data_dir, self.num_positive, self.negative_ratio)
+
+    def create_search_examples(self,
+                               data_dir: str,
+                               num_positive: int = None,
+                               negative_ratio: int = None) -> List[InputExample]:
+        positive_examples = self.sample_search_examples(data_dir,
+                                                        num_positive,
+                                                        self.positive_label)
+        negative_examples = self.sample_search_examples(data_dir,
+                                                        negative_ratio,
+                                                        self.relations_entity_types_for_search(self.positive_label))
+        return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
+
+    def sample_search_examples(self, data_dir, num_sample, relation):
+        relation = self.relation_name_adapter(relation)
+        def count_search_results(file: str, relation_name: str):
+            return json.load(open(file, 'r'))[relation_name]
+
+        count_results = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
+        assert num_sample < count_results
+        examples = self._create_search_examples_given_row_ids(
+            os.path.join(data_dir, relation),
+            sample(range(0, count_results), num_sample)
+        )
+        return list(examples)
+
+    def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
+        raise NotImplementedError
+
+    def relations_entity_types_for_search(self, relation: str):
+        return RELATIONS_ENTITY_TYPES_FOR_SEARCH[
+            self.relation_name_adapter(relation)
+        ]
+
+    def relation_name_adapter(self, relation: str):
+        raise NotImplementedError
 
     def get_eval_examples(self, data_dir: str) -> List[InputExample]:
         """Gets a collection of `InputExample`s for the dev set."""
