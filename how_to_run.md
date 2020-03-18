@@ -12,6 +12,12 @@ Running with oto example:
 bash run_classification.sh
 ```
 
+#### Out Vars:
+```
+test_F1, test_precision, test_recall, confidence, time
+```
+ (The rest will be saved in RAW)
+
 #### Define Arguments
 Explicitly:
 ```
@@ -33,13 +39,6 @@ Running classification for all relations as a grid for TACRED:
 ```
 {"task": ["tacred"], "relation_name": ["per:children", "per:origin", "per:date_of_birth", "org:dissolved", "org:founded_by", "org:country_of_headquarters", "per:country_of_birth", "per:religion", "per:spouse"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
-
-
-#### Out Vars:
-```
-test_F1, test_precision, test_recall, confidence, time
-```
- (The rest will be saved in RAW)
 
  ### Explore Errors
 

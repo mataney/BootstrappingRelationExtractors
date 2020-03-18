@@ -128,32 +128,17 @@ NEGATIVE_PATTERNS = {
 
 
 LIMIT = -1
-OUTPUT_DIR = 'scripts/search_results'
+DOWNLOAD_DIR = 'scripts/search_results'
 URL = 'http://35.246.164.171:5000'
 
 def main():
-    # positive_outfiles = download_from_spike_search(PATTERNS, LIMIT)
-    # negative_outfiles = download_from_spike_search(NEGATIVE_PATTERNS, LIMIT, use_odinson=True)
-    positive_outfiles = {"org:country_of_headquarters": ["raw-org:country_of_headquarters-0", "raw-org:country_of_headquarters-1", "raw-org:country_of_headquarters-2"],
-                         "org:dissolved": ["raw-org:dissolved-0", "raw-org:dissolved-1", "raw-org:dissolved-2"],
-                         "org:founded_by": ["raw-org:founded_by-0", "raw-org:founded_by-1", "raw-org:founded_by-2"],
-                         "per:children": ["raw-per:children-0", "raw-per:children-1", "raw-per:children-2"],
-                         "per:country_of_birth": ["raw-per:country_of_birth-0", "raw-per:country_of_birth-1", "raw-per:country_of_birth-2"],
-                         "per:date_of_birth": ["raw-per:date_of_birth-0", "raw-per:date_of_birth-1", "raw-per:date_of_birth-2"],
-                         "per:origin": ["raw-per:origin-0", "raw-per:origin-1", "raw-per:origin-2"],
-                         "per:religion": ["raw-per:religion-0", "raw-per:religion-1"],
-                         "per:spouse": ["raw-per:spouse-0", "raw-per:spouse-1", "raw-per:spouse-2"],}
-    negative_outfiles = {"ORGANIZATION:DATE": ["raw-ORGANIZATION:DATE-0", "raw-ORGANIZATION:DATE-1"],
-                         "ORGANIZATION:LOCATION": ["raw-ORGANIZATION:LOCATION-0", "raw-ORGANIZATION:LOCATION-1"],
-                         "ORGANIZATION:PERSON": ["raw-ORGANIZATION:PERSON-0", "raw-ORGANIZATION:PERSON-1"],
-                         "PERSON:DATE": ["raw-PERSON:DATE-0", "raw-PERSON:DATE-1"],
-                         "PERSON:LOCATION": ["raw-PERSON:LOCATION-0", "raw-PERSON:LOCATION-1"],
-                         "PERSON:MISC": ["raw-PERSON:MISC-0", "raw-PERSON:MISC-1"],
-                         "PERSON:PERSON": ["raw-PERSON:PERSON-0"],}
-    output_dir = os.path.join('data', 'search')
+    patterns = SINGLE_TRIGGER_PATTERNS # PATTERNS
+    output_dir = 'data/single_trigger_search' # 'data/all_triggers_search'
+    positive_outfiles = download_from_spike_search(patterns, LIMIT)
+    negative_outfiles = download_from_spike_search(NEGATIVE_PATTERNS, LIMIT, use_odinson=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    positive_length_counter = prepare_positive_examples(output_dir, positive_outfiles)
+    positive_length_counter = prepare_positive_examples(output_dir, positive_outfiles, patterns)
     negative_length_counter = prepare_negative_examples(output_dir, negative_outfiles)
 
     with open(os.path.join(output_dir, 'file_lengths.json'), 'w') as files_lengths:
@@ -188,7 +173,7 @@ def seperate_entities(data):
     else:
         return False
 
-def prepare_positive_examples(output_dir, search_file_paths):
+def prepare_positive_examples(output_dir, search_file_paths, patterns):
     row_ids = {}
     for relation, relation_paths in tqdm(search_file_paths.items()):
         last_sent_id_used = -1
@@ -196,7 +181,6 @@ def prepare_positive_examples(output_dir, search_file_paths):
         writer = csv.writer(out_file, delimiter='\t')
         row_id = 0
         for i, relation_path in enumerate(relation_paths):
-            relation_path = os.path.join('scripts', 'search_results', relation_path)
             search_file = open(relation_path, "r", encoding="utf-8")
             reader = csv.reader(search_file, delimiter='\t')
             headers = next(reader)
@@ -209,7 +193,7 @@ def prepare_positive_examples(output_dir, search_file_paths):
                                  d['e1_last_index'] + 1,
                                  d['e2_first_index'],
                                  d['e2_last_index'] + 1)
-                writer.writerow([text, relation, PATTERNS[relation][i], d['sentence_id']])
+                writer.writerow([text, relation, patterns[relation][i], d['sentence_id']])
                 last_sent_id_used = d['sentence_id']
                 row_id += 1
             search_file.close()
@@ -226,7 +210,6 @@ def prepare_negative_examples(output_dir, search_file_paths):
         writer = csv.writer(out_file, delimiter='\t')
         row_id = 0
         for i, relation_path in enumerate(file_paths):
-            relation_path = os.path.join('scripts', 'search_results', relation_path)
             search_file = open(relation_path, "r", encoding="utf-8")
             reader = csv.reader(search_file, delimiter='\t')
             headers = next(reader)
@@ -309,8 +292,8 @@ def query_params(pattern, odinson):
             }
 
 def download_from_spike_search(patterns_dict, limit, use_odinson=False):
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    if not os.path.exists(DOWNLOAD_DIR):
+        os.makedirs(DOWNLOAD_DIR)
     outfiles = defaultdict(list)
     for relation, patterns in tqdm(patterns_dict.items()):
         for id, pattern in enumerate(patterns):
@@ -328,7 +311,7 @@ def download_from_spike_search(patterns_dict, limit, use_odinson=False):
             tsv_url = URL + tsv_location + download_tsv_params
   
             print(f'Downloading query: {pattern} for relation: {relation}')
-            outfile = f'{OUTPUT_DIR}/raw-{relation}-{id}'
+            outfile = f'{DOWNLOAD_DIR}/raw-{relation}-{id}'
             wget.download(tsv_url, outfile, bar=None)
             print('Done downloading ')
             outfiles[relation] += [outfile]
@@ -337,3 +320,43 @@ def download_from_spike_search(patterns_dict, limit, use_odinson=False):
 
 if __name__ == "__main__":
     main()
+
+# positive_outfiles = {"org:country_of_headquarters": ["scripts/search_results/raw-org:country_of_headquarters-0",
+#                                                      "scripts/search_results/raw-org:country_of_headquarters-1",
+#                                                      "scripts/search_results/raw-org:country_of_headquarters-2"],
+#                      "org:dissolved": ["scripts/search_results/raw-org:dissolved-0",
+#                                        "scripts/search_results/raw-org:dissolved-1",
+#                                        "scripts/search_results/raw-org:dissolved-2"],
+#                      "org:founded_by": ["scripts/search_results/raw-org:founded_by-0",
+#                                         "scripts/search_results/raw-org:founded_by-1",
+#                                         "scripts/search_results/raw-org:founded_by-2"],
+#                      "per:children": ["scripts/search_results/raw-per:children-0",
+#                                       "scripts/search_results/raw-per:children-1",
+#                                       "scripts/search_results/raw-per:children-2"],
+#                      "per:country_of_birth": ["scripts/search_results/raw-per:country_of_birth-0",
+#                                               "scripts/search_results/raw-per:country_of_birth-1",
+#                                               "scripts/search_results/raw-per:country_of_birth-2"],
+#                      "per:date_of_birth": ["scripts/search_results/raw-per:date_of_birth-0",
+#                                            "scripts/search_results/raw-per:date_of_birth-1",
+#                                            "scripts/search_results/raw-per:date_of_birth-2"],
+#                      "per:origin": ["scripts/search_results/raw-per:origin-0",
+#                                     "scripts/search_results/raw-per:origin-1",
+#                                     "scripts/search_results/raw-per:origin-2"],
+#                      "per:religion": ["scripts/search_results/raw-per:religion-0",
+#                                       "scripts/search_results/raw-per:religion-1"],
+#                      "per:spouse": ["scripts/search_results/raw-per:spouse-0",
+#                                     "scripts/search_results/raw-per:spouse-1",
+#                                     "scripts/search_results/raw-per:spouse-2"],}
+#  negative_outfiles = {"ORGANIZATION:DATE": ["scripts/search_results/raw-ORGANIZATION:DATE-0",
+#                                             "scripts/search_results/raw-ORGANIZATION:DATE-1"],
+#                        "ORGANIZATION:LOCATION": ["scripts/search_results/raw-ORGANIZATION:LOCATION-0",
+#                                                  "scripts/search_results/raw-ORGANIZATION:LOCATION-1"],
+#                        "ORGANIZATION:PERSON": ["scripts/search_results/raw-ORGANIZATION:PERSON-0",
+#                                                "scripts/search_results/raw-ORGANIZATION:PERSON-1"],
+#                        "PERSON:DATE": ["scripts/search_results/raw-PERSON:DATE-0",
+#                                        "scripts/search_results/raw-PERSON:DATE-1"],
+#                        "PERSON:LOCATION": ["scripts/search_results/raw-PERSON:LOCATION-0",
+#                                            "scripts/search_results/raw-PERSON:LOCATION-1"],
+#                        "PERSON:MISC": ["scripts/search_results/raw-PERSON:MISC-0",
+#                                        "scripts/search_results/raw-PERSON:MISC-1"],
+#                        "PERSON:PERSON": ["scripts/search_results/raw-PERSON:PERSON-0"],}

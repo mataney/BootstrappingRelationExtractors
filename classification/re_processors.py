@@ -78,7 +78,7 @@ class REProcessor(DataProcessor):
                                data_dir: str,
                                num_positive: int = None,
                                negative_ratio: int = None) -> List[InputExample]:
-        data_dir = 'data/search'
+        data_dir = 'data/single_trigger_search' # 'data/all_triggers_search'
         positive_examples = self.sample_search_examples(data_dir,
                                                         num_positive,
                                                         self.positive_label)
