@@ -21,18 +21,53 @@ RELATIONS_TYPES = {
     "per:origin": "PERSON:MISC",
 }
 
-TACRED_DOCRED_RELATIONS_MAPPING = {
-    "per:children": "child",
-    "per:date_of_birth": "date_of_birth",
-    "org:dissolved": "dissolved,_abolished_or_demolished",
-    "org:founded_by": "founded_by",
-    "org:country_of_headquarters": "headquarters_location",
-    "per:country_of_birth": "place_of_birth",
-    "per:religion": "religion",
-    "per:spouse": "spouse",
-    "per:origin": "country_of_origin",
-    "NOTA": "NOTA"
-}
+SINGLE_TRIGGER_PATTERNS = {
+    "per:children": [
+        "{e1:e=PERSON John} 's [t:w=son son] , {e2:e=PERSON Tim} .",
+        "{e1:e=PERSON John} is survived by her [t:w=son son] , {e2:e=PERSON Tim} .",
+        "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
+        ],
+    "per:date_of_birth": [
+        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
+        "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
+        "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
+        ],
+    "org:dissolved": [
+        "{e1:e=ORGANIZATION Microsoft} was [t:w=closed closed] in {e2:e=DATE 1997} .",
+        "{e1:e=ORGANIZATION Microsoft} announced [t:w=bankruptcy bankruptcy] in {e2:e=DATE 1997}.",
+        "{e1:e=ORGANIZATION Microsoft} filed for [t:w=bankruptcy bankruptcy] in {e2:e=DATE 1997}. ",
+        ],
+    "org:founded_by": [
+        "{e1:e=ORGANIZATION Microsoft} [t:w=founder founder] {e2:e=PERSON Mary} likes running.",
+        "{e2:e=PERSON Mary} , who [t:w=founded founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
+        "{e1:e=ORGANIZATION Microsoft} was [t:w=founded founded] [$ by] {e2:e=PERSON Mary}.",
+        ],
+    "org:country_of_headquarters": [
+        "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {e2:e=LOCATION England} .",
+        "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
+        "{e1:e=ORGANIZATION Microsoft}, [t:w=based based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
+        ],
+    "per:country_of_birth": [
+        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
+        "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
+        "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
+        ],
+    # "per:religion": [
+    #     "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
+    #     "[e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish] {e1:e=PERSON John} is walking down the street.",
+    #     ],
+    "per:spouse": [
+        "{e1:e=PERSON John} 's [t:w=wife wife], {e2:e=PERSON Mary} , died in 1991 .",
+        "{e1:e=PERSON John} [t:w=married married] {e2:e=PERSON Mary}",
+        "{e1:e=PERSON John} [t:w=married married] to {e2:e=PERSON Mary}",
+        ],
+    "per:origin": [
+        "{e2:e=MISC Scottish} {e1:e=PERSON Mary} is high.",
+        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} descent.",
+        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} [t:w=descent|nationality|ancestry|heritage|roots|blood|maternal|birth|descends|paternal|descended|raised|born|background|descend|origins|lineage|origin|ancestors|descendant|ancestral|country descent].",
+        "{e1:e=PERSON Mary} is originally from {e2:e=LOCATIION Scotland}." #Check what's the best from these
+        ]
+    }
 
 PATTERNS = {
     "per:children": [
@@ -93,20 +128,22 @@ NEGATIVE_PATTERNS = {
 
 
 LIMIT = -1
-OUTPUT_DIR = 'scripts/search_results'
+DOWNLOAD_DIR = 'scripts/search_results'
 URL = 'http://35.246.164.171:5000'
 
 def main():
-    positive_outfiles = download_from_spike_search(PATTERNS, LIMIT)
-    negative_outfiles = download_from_spike_search(NEGATIVE_PATTERNS, 100000, use_odinson=True)
-    search_files = merge_files(positive_outfiles, negative_outfiles)
-    prepare_examples(search_files)
+    patterns = SINGLE_TRIGGER_PATTERNS # PATTERNS
+    output_dir = 'data/single_trigger_search' # 'data/all_triggers_search'
+    positive_outfiles = download_from_spike_search(patterns, LIMIT)
+    negative_outfiles = download_from_spike_search(NEGATIVE_PATTERNS, LIMIT, use_odinson=True)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    positive_length_counter = prepare_positive_examples(output_dir, positive_outfiles, patterns)
+    negative_length_counter = prepare_negative_examples(output_dir, negative_outfiles)
 
-def merge_files(positives, negatives):
-    all = positives.copy()
-    for k in all:
-        all[k] += negatives[RELATIONS_TYPES[k]]
-    return all
+    with open(os.path.join(output_dir, 'file_lengths.json'), 'w') as files_lengths:
+        json.dump(dict(positive_length_counter, **negative_length_counter), files_lengths)
+
 
 def remove_same_sent_id(data):
     grouped = defaultdict(list)
@@ -136,83 +173,103 @@ def seperate_entities(data):
     else:
         return False
 
-def prepare_examples(search_files):
-    for relation, relation_search_files in search_files.items():
-        all_data = []
-        for i, search_file in enumerate(relation_search_files):
-            data = read_tsv(search_file)
-            for d in data:
-                if not seperate_entities(d):
+def prepare_positive_examples(output_dir, search_file_paths, patterns):
+    row_ids = {}
+    for relation, relation_paths in tqdm(search_file_paths.items()):
+        last_sent_id_used = -1
+        out_file = open(os.path.join(output_dir, relation), 'w')
+        writer = csv.writer(out_file, delimiter='\t')
+        row_id = 0
+        for i, relation_path in enumerate(relation_paths):
+            search_file = open(relation_path, "r", encoding="utf-8")
+            reader = csv.reader(search_file, delimiter='\t')
+            headers = next(reader)
+            for d in reader:
+                d = map_array_given_header(d, headers)
+                if not seperate_entities(d) or d['sentence_id'] == last_sent_id_used:
                     continue
                 text = wrap_text(d['sentence_text'].split(),
-                                d['e1_first_index'],
-                                d['e1_last_index'] + 1,
-                                d['e2_first_index'],
-                                d['e2_last_index'] + 1)
-                if relation in search_file:
-                    label = relation
-                    pattern = PATTERNS[relation][i]
-                else:
-                    label = 'NOTA'
-                    pattern = 'Negative Example'
-                all_data.append({'text': text, 'label': label, 'pattern': pattern, 'sentence_id': d['sentence_id']})
+                                 d['e1_first_index'],
+                                 d['e1_last_index'] + 1,
+                                 d['e2_first_index'],
+                                 d['e2_last_index'] + 1)
+                writer.writerow([text, relation, patterns[relation][i], d['sentence_id']])
+                last_sent_id_used = d['sentence_id']
+                row_id += 1
+            search_file.close()
+        row_ids[relation] = row_id
+        out_file.close()
 
-        all_data = remove_same_sent_id(all_data)
-        all_data = sample(all_data, num_positive=None, negative_ratio=10)
+    return row_ids
 
-        write_to_datasets(all_data, relation)
-        
-def write_to_datasets(data, relation):
-    for dataset in ['tacred', 'docred']:
-        relation = relation if dataset == 'tacred' else TACRED_DOCRED_RELATIONS_MAPPING[relation]
-        output_dataset_dir = os.path.join('data', dataset, 'search')
-        if not os.path.exists(output_dataset_dir):
-            os.makedirs(output_dataset_dir)
-        with open(os.path.join(output_dataset_dir, relation), 'w') as outfile:
-            tsv_writer = csv.writer(outfile, delimiter='\t')
-            for i, d in enumerate(data):
-                label = d['label'] if dataset == 'tacred' else TACRED_DOCRED_RELATIONS_MAPPING[d['label']]
-                tsv_writer.writerow([i, d['text'], label, d['pattern'], d['sentence_id']])
-            print(f"Wrote data to file {outfile.name}")
+def prepare_negative_examples(output_dir, search_file_paths):
+    row_ids = {}
+    for entities, file_paths in tqdm(search_file_paths.items()):
+        last_sent_id_used = -1
+        out_file = open(os.path.join(output_dir, entities), 'w')
+        writer = csv.writer(out_file, delimiter='\t')
+        row_id = 0
+        for i, relation_path in enumerate(file_paths):
+            search_file = open(relation_path, "r", encoding="utf-8")
+            reader = csv.reader(search_file, delimiter='\t')
+            headers = next(reader)
+            for d in reader:
+                d = map_array_given_header(d, headers)
+                if not seperate_entities(d) or d['sentence_id'] == last_sent_id_used:
+                    continue
+                text = wrap_text(d['sentence_text'].split(),
+                                 d['e1_first_index'],
+                                 d['e1_last_index'] + 1,
+                                 d['e2_first_index'],
+                                 d['e2_last_index'] + 1)
+                writer.writerow([text, 'NOTA', NEGATIVE_PATTERNS[entities][i], d['sentence_id']])
+                last_sent_id_used = d['sentence_id']
+                row_id += 1
+            search_file.close()
+        row_ids[entities] =row_id
+        out_file.close()
 
-#Duplicated from re_processors
-def sample(data,
-           num_positive,
-           negative_ratio):
-    def get_first_num_examples(examples_in_label, max_num):
-        if max_num is None:
-            return examples_in_label
-        return examples_in_label[:max_num]
+    return row_ids
 
-    shuffle(data)
-    positive_examples = get_first_num_examples([d for d in data if d['label'] != 'NOTA'], num_positive)
-    negative_examples = get_first_num_examples([d for d in data if d['label'] == 'NOTA'], len(positive_examples) * negative_ratio)
-    pos_and_neg_examples = positive_examples + negative_examples
-    shuffle(pos_and_neg_examples)
+# def write_to_datasets(data, relation):
+#     for dataset in ['tacred', 'docred']:
+#         relation = relation if dataset == 'tacred' else TACRED_DOCRED_RELATIONS_MAPPING[relation]
+#         output_dataset_dir = os.path.join('data', dataset, 'search')
+#         if not os.path.exists(output_dataset_dir):
+#             os.makedirs(output_dataset_dir)
+#         with open(os.path.join(output_dataset_dir, relation), 'w') as outfile:
+#             writer = csv.writer(outfile, delimiter='\t')
+#             for i, d in enumerate(data):
+#                 label = d['label'] if dataset == 'tacred' else TACRED_DOCRED_RELATIONS_MAPPING[d['label']]
+#                 writer.writerow([i, d['text'], label, d['pattern'], d['sentence_id']])
+#             print(f"Wrote data to file {outfile.name}")
 
-    return pos_and_neg_examples
+# #Duplicated from re_processors
+# def sample(data,
+#            num_positive,
+#            negative_ratio):
+#     def get_first_num_examples(examples_in_label, max_num):
+#         if max_num is None:
+#             return examples_in_label
+#         return examples_in_label[:max_num]
 
-def read_tsv(input_file):
+#     shuffle(data)
+#     positive_examples = get_first_num_examples([d for d in data if d['label'] != 'NOTA'], num_positive)
+#     negative_examples = get_first_num_examples([d for d in data if d['label'] == 'NOTA'], len(positive_examples) * negative_ratio)
+#     pos_and_neg_examples = positive_examples + negative_examples
+#     shuffle(pos_and_neg_examples)
+
+#     return pos_and_neg_examples
+
+def map_array_given_header(arr, headers):
     def int_if_possible(value):
         try:
             int(value)
             return int(value)
         except ValueError:
             return value
-    lines = []
-    with open(input_file, "r", encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter='\t')
-        for row in reader:
-            lines.append(row)
-
-    headers, data = lines[0], lines[1:]
-    ret = []
-    for d in data:
-        ret.append(
-            {headers[i]: int_if_possible(d[i]) for i in range(len(headers))}
-        )
-
-    return ret
+    
+    return {headers[i]: int_if_possible(arr[i]) for i in range(len(headers))}
 
 def query_params(pattern, odinson):
     if odinson == False:
@@ -235,8 +292,8 @@ def query_params(pattern, odinson):
             }
 
 def download_from_spike_search(patterns_dict, limit, use_odinson=False):
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    if not os.path.exists(DOWNLOAD_DIR):
+        os.makedirs(DOWNLOAD_DIR)
     outfiles = defaultdict(list)
     for relation, patterns in tqdm(patterns_dict.items()):
         for id, pattern in enumerate(patterns):
@@ -254,14 +311,52 @@ def download_from_spike_search(patterns_dict, limit, use_odinson=False):
             tsv_url = URL + tsv_location + download_tsv_params
   
             print(f'Downloading query: {pattern} for relation: {relation}')
-            outfile = f'{OUTPUT_DIR}/raw-{relation}-{id}'
+            outfile = f'{DOWNLOAD_DIR}/raw-{relation}-{id}'
             wget.download(tsv_url, outfile, bar=None)
             print('Done downloading ')
             outfiles[relation] += [outfile]
 
     return outfiles
 
-#TODO run NER - This is not a must, because I can make it learn city of birth as well as country of birth but in inference I will do the NER. When I;m not running NER before it gives it more examples.
-
 if __name__ == "__main__":
     main()
+
+# positive_outfiles = {"org:country_of_headquarters": ["scripts/search_results/raw-org:country_of_headquarters-0",
+#                                                      "scripts/search_results/raw-org:country_of_headquarters-1",
+#                                                      "scripts/search_results/raw-org:country_of_headquarters-2"],
+#                      "org:dissolved": ["scripts/search_results/raw-org:dissolved-0",
+#                                        "scripts/search_results/raw-org:dissolved-1",
+#                                        "scripts/search_results/raw-org:dissolved-2"],
+#                      "org:founded_by": ["scripts/search_results/raw-org:founded_by-0",
+#                                         "scripts/search_results/raw-org:founded_by-1",
+#                                         "scripts/search_results/raw-org:founded_by-2"],
+#                      "per:children": ["scripts/search_results/raw-per:children-0",
+#                                       "scripts/search_results/raw-per:children-1",
+#                                       "scripts/search_results/raw-per:children-2"],
+#                      "per:country_of_birth": ["scripts/search_results/raw-per:country_of_birth-0",
+#                                               "scripts/search_results/raw-per:country_of_birth-1",
+#                                               "scripts/search_results/raw-per:country_of_birth-2"],
+#                      "per:date_of_birth": ["scripts/search_results/raw-per:date_of_birth-0",
+#                                            "scripts/search_results/raw-per:date_of_birth-1",
+#                                            "scripts/search_results/raw-per:date_of_birth-2"],
+#                      "per:origin": ["scripts/search_results/raw-per:origin-0",
+#                                     "scripts/search_results/raw-per:origin-1",
+#                                     "scripts/search_results/raw-per:origin-2"],
+#                      "per:religion": ["scripts/search_results/raw-per:religion-0",
+#                                       "scripts/search_results/raw-per:religion-1"],
+#                      "per:spouse": ["scripts/search_results/raw-per:spouse-0",
+#                                     "scripts/search_results/raw-per:spouse-1",
+#                                     "scripts/search_results/raw-per:spouse-2"],}
+#  negative_outfiles = {"ORGANIZATION:DATE": ["scripts/search_results/raw-ORGANIZATION:DATE-0",
+#                                             "scripts/search_results/raw-ORGANIZATION:DATE-1"],
+#                        "ORGANIZATION:LOCATION": ["scripts/search_results/raw-ORGANIZATION:LOCATION-0",
+#                                                  "scripts/search_results/raw-ORGANIZATION:LOCATION-1"],
+#                        "ORGANIZATION:PERSON": ["scripts/search_results/raw-ORGANIZATION:PERSON-0",
+#                                                "scripts/search_results/raw-ORGANIZATION:PERSON-1"],
+#                        "PERSON:DATE": ["scripts/search_results/raw-PERSON:DATE-0",
+#                                        "scripts/search_results/raw-PERSON:DATE-1"],
+#                        "PERSON:LOCATION": ["scripts/search_results/raw-PERSON:LOCATION-0",
+#                                            "scripts/search_results/raw-PERSON:LOCATION-1"],
+#                        "PERSON:MISC": ["scripts/search_results/raw-PERSON:MISC-0",
+#                                        "scripts/search_results/raw-PERSON:MISC-1"],
+#                        "PERSON:PERSON": ["scripts/search_results/raw-PERSON:PERSON-0"],}
