@@ -38,4 +38,5 @@ RELATION_MAPPING = {'org:founded_by': {'id': 'org:founded_by', 'subj_type': ['OR
     'per:date_of_birth': {'id': 'per:date_of_birth', 'subj_type': ['PERSON'], 'obj_type': ['DATE']}, \
     'per:city_of_birth': {'id': 'per:city_of_birth', 'subj_type': ['PERSON'], 'obj_type': ['CITY']}, \
     'per:charges': {'id': 'per:charges', 'subj_type': ['PERSON'], 'obj_type': ['CRIMINAL_CHARGE']}, \
-    'per:country_of_death': {'id': 'per:country_of_death', 'subj_type': ['PERSON'], 'obj_type': ['COUNTRY', 'NATIONALITY', 'LOCATION']}}
+    'per:country_of_death': {'id': 'per:country_of_death', 'subj_type': ['PERSON'], 'obj_type': ['COUNTRY', 'NATIONALITY', 'LOCATION']},
+    'no_relation': {'id': 'no_relation'}}

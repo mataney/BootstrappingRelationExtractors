@@ -253,7 +253,8 @@ def train(args, train_dataset, model, tokenizer):
                     if (
                         args.local_rank == -1 and args.evaluate_during_training
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
-                        results = evaluate(args, model, tokenizer)
+                        set_type = 'dev_multi_class' if args.relation_name == 'all' else 'dev_eval'
+                        results = evaluate(args, model, tokenizer, set_type=set_type)
                         for key, value in results.items():
                             eval_key = "eval_{}".format(key)
                             logs[eval_key] = value
@@ -418,14 +419,23 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
-        if (args.task_name == "docred" or args.task_name == "tacred") and 'full' in set_type:
-            full_eval_results = []
-            for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
-                if pred == positive_label_index:
-                    relation_id = RELATION_MAPPING[args.task_name][args.relation_name]['id']
-                    full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence[pred].item()})
-            output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
-            json.dump(full_eval_results, open(output_eval_file, "w"))
+        if (args.task_name == "docred" or args.task_name == "tacred"):
+            if 'full' in set_type:
+                full_eval_results = []
+                for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
+                    if pred == positive_label_index:
+                        relation_id = RELATION_MAPPING[args.task_name][args.relation_name]['id']
+                        full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence[pred].item()})
+                output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
+                json.dump(full_eval_results, open(output_eval_file, "w"))
+            elif 'multi_class' in set_type:
+                full_eval_results = []
+                relation_names = list(RELATION_MAPPING[args.task_name].keys())
+                for pred in preds:
+                    relation_name = relation_names[pred]
+                    full_eval_results.append(relation_name)
+                output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
+                json.dump(full_eval_results, open(output_eval_file, "w"))
 
     return results
 
@@ -578,6 +588,9 @@ def main():
         help="The maximum total input sequence length after tokenization. Sequences longer "
         "than this will be truncated, sequences shorter will be padded.",
     )
+    parser.add_argument("--do_multi_class_train", action="store_true")
+    parser.add_argument("--do_multi_class_eval_dev", action="store_true")
+    parser.add_argument("--do_multi_class_eval_test", action="store_true")
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_distant_train", action="store_true", help="Whether to run training on distant supervision data.")
     parser.add_argument("--do_search_train", action="store_true", help="Whether to run training on search supervision data.")
@@ -661,7 +674,7 @@ def main():
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
-        and (args.do_train or args.do_distant_train or args.do_search_train)
+        and (args.do_multi_class_train or args.do_train or args.do_distant_train or args.do_search_train)
         and not args.overwrite_output_dir
     ):
         raise ValueError(
@@ -749,17 +762,17 @@ def main():
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
-    if args.do_train or args.do_distant_train or args.do_search_train:
-        train_names = ['train', 'distant', 'search']
-        bools = [args.do_train, args.do_distant_train, args.do_search_train]
-        train_types = [s for s, b in zip(train_names, bools) if b]
-        assert len(train_types) == 1
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, train_types[0])
+    splits = ['train_multi_class', 'train', 'distant', 'search']
+    bools = [args.do_multi_class_train, args.do_train, args.do_distant_train, args.do_search_train]
+    splits_to_train = [s for s, b in zip(splits, bools) if b]
+    if len(splits_to_train) > 0:
+        assert len(splits_to_train) == 1
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, splits_to_train[0])
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
-    if (args.do_train or args.do_distant_train or args.do_search_train) and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
+    if len(splits_to_train) > 0 and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
@@ -789,7 +802,10 @@ def main():
 
     # Evaluation
     results = {}
-    if (args.do_eval_dev or args.do_full_dev_eval or args.do_full_test_eval) and args.local_rank in [-1, 0]:
+    splits = ['dev_multi_class', 'test_multi_class', 'dev_eval', 'full_dev_eval', 'full_test_eval']
+    bools = [args.do_multi_class_eval_dev, args.do_multi_class_eval_test, args.do_eval_dev, args.do_full_dev_eval, args.do_full_test_eval]
+    splits_to_eval = [s for s, b in zip(splits, bools) if b]
+    if len(splits_to_eval) > 0 and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
         tokenizer.add_tokens(SPECIAL_TOKENS)
         model.resize_token_embeddings(len(tokenizer))
@@ -806,10 +822,7 @@ def main():
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
-            splits = ['dev_eval', 'full_dev_eval', 'full_test_eval']
-            bools = [args.do_eval_dev, args.do_full_dev_eval, args.do_full_test_eval]
-            splits = [s for s, b in zip(splits, bools) if b]
-            for split in splits:
+            for split in splits_to_eval:
                 result = evaluate(args, model, tokenizer, prefix=prefix, set_type=split)
                 result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
                 results.update(result)

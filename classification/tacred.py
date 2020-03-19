@@ -50,11 +50,18 @@ class TACREDSearchExample(InputExample):
 class TACREDProcessor(REProcessor):
     def __init__(self, relation_name: str, num_positive: int = None, negative_ratio: int = None, type_independent_neg_sample: bool = True) -> None:
         super().__init__(relation_name, num_positive, negative_ratio, type_independent_neg_sample)
-        assert relation_name in RELATION_MAPPING
+        assert relation_name in RELATION_MAPPING or relation_name == 'all'
         self.relation_mapping = RELATION_MAPPING
         self.train_file = "train.json"
         self.dev_file = "dev.json"
         self.test_file = "test.json"
+
+    def _create_multi_class_examples(self, relations: Dict[int, Relation],
+                         set_type: SetType,
+                         builder: Builder = TACREDExample.build) -> Iterator[TACREDExample]:
+        for id, relation in enumerate(relations):
+            label = relation['relation']
+            yield builder(id, relation, label)
 
     def _create_examples(self, relations: Dict[int, Relation],
                          set_type: SetType,

@@ -51,7 +51,13 @@ class REProcessor(DataProcessor):
         self.relation_mapping = None
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[InputExample]:
-        if set_type == "train":
+        if set_type == "train_multi_class":
+            return self.get_multi_class_examples(data_dir, self.train_file)
+        elif set_type == "dev_multi_class":
+            return self.get_multi_class_examples(data_dir, self.dev_file)
+        elif set_type == "test_multi_class":
+            return self.get_multi_class_examples(data_dir, self.test_file)
+        elif set_type == "train":
             return self.get_train_examples(data_dir)
         elif set_type == "distant":
             return self.get_distant_train_examples(data_dir)
@@ -65,6 +71,17 @@ class REProcessor(DataProcessor):
             return self.get_all_possible_eval_examples(data_dir, 'full_test_eval')
         else:
             raise Exception("Wrong set_type name")
+
+    def get_multi_class_examples(self, data_dir: str, file: str) -> List[InputExample]:
+        examples = self._create_multi_class_examples(self._read_json(os.path.join(data_dir, file)), "doesn't matter")
+        examples = list(examples)
+        shuffle(examples)
+        return examples
+
+    def _create_multi_class_examples(self, documents: List[JsonObject],
+                         set_type: Any,
+                         builder: Builder = None) -> Iterator[InputExample]:
+        raise NotImplementedError
 
     def get_train_examples(self, data_dir: str) -> List[InputExample]:
         """Gets a collection of `InputExample`s for the train set."""
@@ -181,6 +198,8 @@ class REProcessor(DataProcessor):
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""
+        if self.positive_label == 'all':
+            return self.relation_mapping.keys()
         return [self.positive_label, NEGATIVE_LABEL]
 
 #This is a copy of glue_convert_examples_to_features with minor changes
@@ -311,17 +330,17 @@ def simple_accuracy(preds, labels):
     return (preds == labels).mean()
 
 def f1_ignore_negative_class(preds, labels, positive_label):
-    f1 = f1_score(y_true=labels, y_pred=preds)
-    p, r, f, _ = precision_recall_fscore_support(y_true=labels,
-                                                 y_pred=preds,
-                                                 pos_label=positive_label,
-                                                 average='binary')
+    f1 = f1_score(y_true=labels, y_pred=preds, average='micro')
+    # p, r, f, _ = precision_recall_fscore_support(y_true=labels,
+    #                                              y_pred=preds,
+    #                                              pos_label=positive_label,
+    #                                              average='binary')
 
     return {
-        "p": p,
-        "r": r,
-        "f1": f,
-        "f1_do_not_ignore_negative_class": f1,
+        # "p": p,
+        # "r": r,
+        "f1": f1,
+        # "f1_do_not_ignore_negative_class": f1,
     }
 
 class Processors:
