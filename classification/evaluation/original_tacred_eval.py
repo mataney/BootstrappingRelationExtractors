@@ -5,6 +5,7 @@ Score the predictions with gold labels, using precision, recall and F1 metrics.
 """
 
 import argparse
+import json
 import sys
 from collections import Counter
 
@@ -24,7 +25,7 @@ def score(key, prediction, verbose=False):
 
     # Loop over the data to compute a score
     for row in range(len(key)):
-        gold = key[row]
+        gold = key[row]['relation']
         guess = prediction[row]
          
         if gold == NO_RELATION and guess == NO_RELATION:
@@ -98,8 +99,9 @@ def score(key, prediction, verbose=False):
 if __name__ == "__main__":
     # Parse the arguments from stdin
     args = parse_arguments()
-    key = [str(line).rstrip('\n') for line in open(str(args.gold_file))]
-    prediction = [str(line).rstrip('\n') for line in open(str(args.pred_file))]
+    key = json.load(open(str(args.gold_file)))
+    prediction = json.load(open(str(args.pred_file)))
+    prediction = {int(k): v for k, v in prediction.items()}
 
     # Check that the lengths match
     if len(prediction) != len(key):

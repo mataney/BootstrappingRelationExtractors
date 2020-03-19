@@ -391,15 +391,21 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-            if (args.task_name == "docred" or args.task_name == "tacred") and 'full' in set_type:
-                if titles is None:
-                    titles = [TITLE_NAMES(args.task_name, set_type, t) for t in batch[5].detach().cpu().numpy()]
-                    relation_heads = batch[6].detach().cpu().numpy()
-                    relation_tails = batch[7].detach().cpu().numpy()
-                else:
-                    titles += [TITLE_NAMES(args.task_name, set_type, t) for t in batch[5].detach().cpu().numpy()]
-                    relation_heads = np.append(relation_heads, batch[6].detach().cpu().numpy(), axis=0)
-                    relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
+            if (args.task_name == "docred" or args.task_name == "tacred"):
+                if 'full' in set_type:
+                    if titles is None:
+                        titles = [TITLE_NAMES(args.task_name, set_type, t) for t in batch[5].detach().cpu().numpy()]
+                        relation_heads = batch[6].detach().cpu().numpy()
+                        relation_tails = batch[7].detach().cpu().numpy()
+                    else:
+                        titles += [TITLE_NAMES(args.task_name, set_type, t) for t in batch[5].detach().cpu().numpy()]
+                        relation_heads = np.append(relation_heads, batch[6].detach().cpu().numpy(), axis=0)
+                        relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
+                elif 'multi_class' in set_type:
+                    if titles is None:
+                        titles = [int(t) for t in batch[5].detach().cpu().numpy()]
+                    else:
+                        titles += [int(t) for t in batch[5].detach().cpu().numpy()]
 
         eval_loss = eval_loss / nb_eval_steps
         normalized_preds = torch.from_numpy(preds).softmax(1)
@@ -429,11 +435,11 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
                 output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
                 json.dump(full_eval_results, open(output_eval_file, "w"))
             elif 'multi_class' in set_type:
-                full_eval_results = []
+                full_eval_results = {}
                 relation_names = list(RELATION_MAPPING[args.task_name].keys())
-                for pred in preds:
+                for pred, title in zip(preds, titles):
                     relation_name = relation_names[pred]
-                    full_eval_results.append(relation_name)
+                    full_eval_results[title] = relation_name
                 output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
                 json.dump(full_eval_results, open(output_eval_file, "w"))
 
