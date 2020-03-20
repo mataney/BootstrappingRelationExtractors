@@ -749,17 +749,17 @@ def main():
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
-    if args.do_train or args.do_distant_train or args.do_search_train:
-        train_names = ['train', 'distant', 'search']
-        bools = [args.do_train, args.do_distant_train, args.do_search_train]
-        train_types = [s for s, b in zip(train_names, bools) if b]
-        assert len(train_types) == 1
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, train_types[0])
+    splits = ['train', 'distant', 'search']
+    bools = [args.do_train, args.do_distant_train, args.do_search_train]
+    splits_to_train = [s for s, b in zip(splits, bools) if b]
+    if len(splits_to_train) > 0:
+        assert len(splits_to_train) == 1
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, splits_to_train[0])
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
-    if (args.do_train or args.do_distant_train or args.do_search_train) and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
+    if len(splits_to_train) > 0 and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
@@ -789,7 +789,10 @@ def main():
 
     # Evaluation
     results = {}
-    if (args.do_eval_dev or args.do_full_dev_eval or args.do_full_test_eval) and args.local_rank in [-1, 0]:
+    splits = ['dev_eval', 'full_dev_eval', 'full_test_eval']
+    bools = [args.do_eval_dev, args.do_full_dev_eval, args.do_full_test_eval]
+    splits_to_eval = [s for s, b in zip(splits, bools) if b]
+    if len(splits_to_eval) > 0 and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
         tokenizer.add_tokens(SPECIAL_TOKENS)
         model.resize_token_embeddings(len(tokenizer))
@@ -806,10 +809,7 @@ def main():
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
-            splits = ['dev_eval', 'full_dev_eval', 'full_test_eval']
-            bools = [args.do_eval_dev, args.do_full_dev_eval, args.do_full_test_eval]
-            splits = [s for s, b in zip(splits, bools) if b]
-            for split in splits:
+            for split in splits_to_eval:
                 result = evaluate(args, model, tokenizer, prefix=prefix, set_type=split)
                 result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
                 results.update(result)
