@@ -2,7 +2,7 @@ from math import ceil
 from classification.tacred import TACREDProcessor
 
 
-relation_names = ["per:children", "per:date_of_birth", "org:dissolved", "org:founded_by", "org:country_of_headquarters", "per:country_of_birth", "per:religion", "per:spouse", "per:origin"]
+relation_names = ["per:children", "org:founded_by", "org:country_of_headquarters", "per:religion", "per:spouse", "per:origin", "per:date_of_death", "per:city_of_death"]
 for relation_name in relation_names:
     num_positive = 100000000
     negative_ratio = 100000000

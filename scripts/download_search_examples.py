@@ -9,34 +9,22 @@ import wget
 
 from classification.re_processors import wrap_text
 
-RELATIONS_TYPES = {
-    "per:children": "PERSON:PERSON",
-    "per:date_of_birth": "PERSON:DATE",
-    "org:dissolved": "ORGANIZATION:DATE",
-    "org:founded_by": "ORGANIZATION:PERSON",
-    "org:country_of_headquarters": "ORGANIZATION:LOCATION",
-    "per:country_of_birth": "PERSON:LOCATION",
-    "per:religion": "PERSON:MISC",
-    "per:spouse": "PERSON:PERSON",
-    "per:origin": "PERSON:MISC",
-}
-
 SINGLE_TRIGGER_PATTERNS = {
     "per:children": [
         "{e1:e=PERSON John} 's [t:w=son son] , {e2:e=PERSON Tim} .",
         "{e1:e=PERSON John} is survived by her [t:w=son son] , {e2:e=PERSON Tim} .",
         "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
         ],
-    "per:date_of_birth": [
-        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
-        "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
-        "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
-        ],
-    "org:dissolved": [
-        "{e1:e=ORGANIZATION Microsoft} was [t:w=closed closed] in {e2:e=DATE 1997} .",
-        "{e1:e=ORGANIZATION Microsoft} announced [t:w=bankruptcy bankruptcy] in {e2:e=DATE 1997}.",
-        "{e1:e=ORGANIZATION Microsoft} filed for [t:w=bankruptcy bankruptcy] in {e2:e=DATE 1997}. ",
-        ],
+    # "per:date_of_birth": [
+    #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
+    #     "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
+    #     "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
+    #     ],
+    # "org:dissolved": [
+    #     "{e1:e=ORGANIZATION Microsoft} was [t:w=closed closed] in {e2:e=DATE 1997} .",
+    #     "{e1:e=ORGANIZATION Microsoft} announced [t:w=bankruptcy bankruptcy] in {e2:e=DATE 1997}.",
+    #     "{e1:e=ORGANIZATION Microsoft} filed for [t:w=bankruptcy bankruptcy] in {e2:e=DATE 1997}. ",
+    #     ],
     "org:founded_by": [
         "{e1:e=ORGANIZATION Microsoft} [t:w=founder founder] {e2:e=PERSON Mary} likes running.",
         "{e2:e=PERSON Mary} , who [t:w=founded founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
@@ -47,15 +35,15 @@ SINGLE_TRIGGER_PATTERNS = {
         "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
         "{e1:e=ORGANIZATION Microsoft}, [t:w=based based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
         ],
-    "per:country_of_birth": [
-        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
-        "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
-        "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
-        ],
-    # "per:religion": [
-    #     "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
-    #     "[e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish] {e1:e=PERSON John} is walking down the street.",
+    # "per:country_of_birth": [
+    #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
+    #     "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
+    #     "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
     #     ],
+    "per:religion": [
+        "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
+        "[e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish] {e1:e=PERSON John} is walking down the street.",
+        ],
     "per:spouse": [
         "{e1:e=PERSON John} 's [t:w=wife wife], {e2:e=PERSON Mary} , died in 1991 .",
         "{e1:e=PERSON John} [t:w=married married] {e2:e=PERSON Mary}",
@@ -75,16 +63,16 @@ PATTERNS = {
         "{e1:e=PERSON John} is survived by her [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
         "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
         ],
-    "per:date_of_birth": [
-        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
-        "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
-        "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
-        ],
-    "org:dissolved": [
-        "{e1:e=ORGANIZATION Microsoft} was [t:w=bust|closed|expired|dissolved|disbanded|bankrupted|dismantled|crumbled|ceased|collapsed closed] in {e2:e=DATE 1997} .",
-        "{e1:e=ORGANIZATION Microsoft} announced [t:w=extradition|bankruptcy|bankrupcy|liquidation bankruptcy] in {e2:e=DATE 1997}.",
-        "{e1:e=ORGANIZATION Microsoft} filed for [t:w=extradition|bankruptcy|bankrupcy|liquidation bankruptcy] in {e2:e=DATE 1997}. ",
-        ],
+    # "per:date_of_birth": [
+    #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
+    #     "{e1:e=PERSON John} was [t:w=born born] in San Francisco in {e2:e=DATE 1997}",
+    #     "{e1:e=PERSON John} [$ -LRB-] {e2:e=DATE 1997} [$ -] [$:e=DATE date] [$ -RRB-] .",
+    #     ],
+    # "org:dissolved": [
+    #     "{e1:e=ORGANIZATION Microsoft} was [t:w=bust|closed|expired|dissolved|disbanded|bankrupted|dismantled|crumbled|ceased|collapsed closed] in {e2:e=DATE 1997} .",
+    #     "{e1:e=ORGANIZATION Microsoft} announced [t:w=extradition|bankruptcy|bankrupcy|liquidation bankruptcy] in {e2:e=DATE 1997}.",
+    #     "{e1:e=ORGANIZATION Microsoft} filed for [t:w=extradition|bankruptcy|bankrupcy|liquidation bankruptcy] in {e2:e=DATE 1997}. ",
+    #     ],
     "org:founded_by": [
         "{e1:e=ORGANIZATION Microsoft} [t:w=founder|co-founder|cofounder|creator founder] {e2:e=PERSON Mary} likes running.",
         "{e2:e=PERSON Mary} , who [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
@@ -95,11 +83,11 @@ PATTERNS = {
         "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
         "{e1:e=ORGANIZATION Microsoft}, [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
         ],
-    "per:country_of_birth": [
-        "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
-        "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
-        "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
-        ],
+    # "per:country_of_birth": [
+    #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
+    #     "{e1:e=PERSON John} was [t:w=born born] in {city:e=LOCATION London} , {e2:e=LOCATION England} in 1997.",
+    #     "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
+    #     ],
     "per:religion": [
         "{e1:e=PERSON John} is a [e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish]",
         "[e2:w=Methodist|Episcopal|separatist|Jew|Christian|Sunni|evangelical|atheism|Islamic|secular|fundamentalist|Christianist|Jewish|Anglican|Catholic|orthodox|Scientology|Conservative|Islamist|Islam|Muslim|Shia Jewish] {e1:e=PERSON John} is walking down the street.",
