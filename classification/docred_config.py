@@ -7,14 +7,13 @@ TRAIN_EVAL_TITLES = ["The Good Food Institute", "Killer Klowns from Outer Space"
 
 DOCRED_TACRED_RELATIONS_MAPPING = {
     "child": "per:children",
-    "date_of_birth": "per:date_of_birth",
-    "dissolved,_abolished_or_demolished": "org:dissolved",
     "founded_by": "org:founded_by",
     "headquarters_location": "org:country_of_headquarters",
-    "place_of_birth": "per:country_of_birth",
     "religion": "per:religion",
     "spouse": "per:spouse",
     "country_of_origin": "per:origin",
+    "date_of_death": "per:date_of_death",
+    "place_of_death": "per:city_of_death",
     "PERSON:PERSON": "PERSON:PERSON",
     "PERSON:DATE": "PERSON:DATE",
     "ORGANIZATION:DATE": "ORGANIZATION:DATE",

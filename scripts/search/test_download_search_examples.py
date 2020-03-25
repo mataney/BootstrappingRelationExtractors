@@ -1,4 +1,4 @@
-from scripts.download_search_examples import seperate_entities
+from scripts.search.download_search_examples import seperate_entities, SearchSortedListMonotonicIncreasingVal
 
 def populate_data(values):
     return {'sentence_id': '1',
