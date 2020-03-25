@@ -142,11 +142,11 @@ def main(args):
     if args.triggers == 'single':
         patterns = SINGLE_TRIGGER_PATTERNS
         download_dir = os.path.join(SCRIPT_DIR, 'single_trigger_search_results')
-        output_dir = os.path.join('data', args.dataset, 'search', 'single_trigger_search2')
+        output_dir = os.path.join('data', args.dataset, 'search', 'single_trigger_search')
     else:
         patterns = PATTERNS
         download_dir = os.path.join(SCRIPT_DIR, 'all_triggers_search_results')
-        output_dir = os.path.join('data', args.dataset, 'search', 'all_triggers_search2')
+        output_dir = os.path.join('data', args.dataset, 'search', 'all_triggers_search')
     positive_outfiles, negative_outfiles = None, None
     if args.download:
         positive_outfiles = download_from_spike_search(download_dir, patterns, LIMIT)
