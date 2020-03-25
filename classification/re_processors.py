@@ -1,6 +1,6 @@
-import csv
 import json
 import logging
+from math import ceil
 import os
 from random import shuffle
 from typing import Any, Callable, Dict, Iterator, List
@@ -78,25 +78,24 @@ class REProcessor(DataProcessor):
                                data_dir: str,
                                num_positive: int = None,
                                negative_ratio: int = None) -> List[InputExample]:
-        data_dir = 'data/single_trigger_search' # 'data/all_triggers_search'
-        positive_examples = self.sample_search_examples(data_dir,
+        search_folder = 'search/single_trigger_search'
+        positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         num_positive,
                                                         self.positive_label)
-        negative_examples = self.sample_search_examples(data_dir,
+        negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         len(positive_examples) * negative_ratio,
                                                         self.relations_entity_types_for_search(self.positive_label))
         return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
 
-    def sample_search_examples(self, data_dir, num_sample, relation):
+    def sample_search_examples(self, data_dir, num_to_sample, relation):
         relation = self.relation_name_adapter(relation)
         def count_search_results(file: str, relation_name: str):
             return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
 
-        count_results = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
-        assert num_sample < count_results
+        pattern_counts = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
+        indices = self._equal_samples_per_pattern(pattern_counts, num_to_sample)
         examples = self._create_search_examples_given_row_ids(
-            os.path.join(data_dir, relation),
-            sample(range(0, count_results), num_sample)
+            os.path.join(data_dir, relation), indices
         )
         return list(examples)
 
@@ -104,9 +103,8 @@ class REProcessor(DataProcessor):
         raise NotImplementedError
 
     def relations_entity_types_for_search(self, relation: str):
-        return RELATIONS_ENTITY_TYPES_FOR_SEARCH[
-            self.relation_name_adapter(relation)
-        ]
+        entity_types = RELATIONS_ENTITY_TYPES_FOR_SEARCH[self.relation_name_adapter(relation)]
+        return f"{relation}-{entity_types}"
 
     def relation_name_adapter(self, relation: str):
         raise NotImplementedError
@@ -170,14 +168,18 @@ class REProcessor(DataProcessor):
             return list(json.load(f))
 
     @classmethod
-    def _read_tsv(cls, input_file: str) -> List[JsonObject]:
-        lines = []
-        with open(input_file, "r", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter='\t')
-            for row in reader:
-                lines.append(row)
+    def _equal_samples_per_pattern(cls, pattern_counts, num_to_sample):
+        ret = []
+        num_to_sample = ceil(num_to_sample / len(pattern_counts))
+        file_shift = 0
+        for _, pattern_examples in pattern_counts.items():
+            if num_to_sample > pattern_examples:
+                num_to_sample = pattern_examples
+            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample)
+            file_shift += pattern_examples
+            ret += indices
 
-        return lines
+        return ret
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""
