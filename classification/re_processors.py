@@ -103,7 +103,8 @@ class REProcessor(DataProcessor):
         raise NotImplementedError
 
     def relations_entity_types_for_search(self, relation: str):
-        entity_types = RELATIONS_ENTITY_TYPES_FOR_SEARCH[self.relation_name_adapter(relation)]
+        relation = self.relation_name_adapter(relation)
+        entity_types = RELATIONS_ENTITY_TYPES_FOR_SEARCH[relation]
         return f"{relation}-{entity_types}"
 
     def relation_name_adapter(self, relation: str):

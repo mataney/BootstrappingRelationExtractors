@@ -40,6 +40,13 @@ Running classification for all relations as a grid for TACRED:
 {"task": ["tacred"], "relation_name": ["per:children", "per:date_of_death", "org:founded_by", "per:religion", "per:spouse", "per:origin", "org:country_of_headquarters", "per:city_of_death"], "num_positive_examples": [5,10,20,100], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
 
+Search Single
+Need to change if Single or All.
+If All, need to add "per:religion".
+```
+{"task": ["tacred"], "training_method": ["search"], "relation_name": ["per:children", "per:date_of_death", "org:founded_by", "per:spouse", "per:origin", "org:country_of_headquarters", "per:city_of_death"], "num_positive_examples": [100, 500, 1000], "ratio_negative_examples": [10], "seed": [1,2,3]}
+```
+
  ### Explore Errors
 
  You can run `expore_error_types.py` to explore the outputs of your model, just copy the RAW from Oto. Then, you can run the analyzing in the following way:
