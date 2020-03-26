@@ -81,14 +81,13 @@ class REProcessor(DataProcessor):
         search_folder = 'search/single_trigger_search'
         positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         num_positive,
-                                                        self.positive_label)
+                                                        self.relation_name_adapter(self.positive_label))
         negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         len(positive_examples) * negative_ratio,
                                                         self.relations_entity_types_for_search(self.positive_label))
         return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
 
     def sample_search_examples(self, data_dir, num_to_sample, relation):
-        relation = self.relation_name_adapter(relation)
         def count_search_results(file: str, relation_name: str):
             return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
 
