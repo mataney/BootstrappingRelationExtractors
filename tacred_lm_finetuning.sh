@@ -1,3 +1,4 @@
+#!/bin/bash
 local_test=0
 
 while getopts o:t option
@@ -11,29 +12,27 @@ done
 
 export PYTHONPATH=$PYTHONPATH:../transformers
 
-# Local config
-if [ $local_test -eq 0 ];then
-    python ../transformers/examples/run_lm_finetuning.py \
+if [ $local_test == "0" ];then
+    python run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
         --model_name_or_path=gpt2 \
         --do_train \
-        --train_data_file=$HOME/matan/dev/datasets/tacred/data/json/dev.json \
+        --train_data_file=data/tacred/for_generation/train.src \
         --block_size=512 \
         --per_gpu_train_batch_size=2 \
         --num_train_epochs=2 \
         --save_steps=1000
-        # --fp16
 else
-    python ../transformers/examples/run_lm_finetuning.py \
+    python run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
-        --model_name_or_path=gpt2-medium \
+        --model_name_or_path=gpt2-large \
         --do_train \
-        --train_data_file=$HOME/matan/dev/datasets/tacred/data/json/dev.json \
+        --train_data_file=data/tacred/for_generation/train.src \
         --block_size=512 \
         --per_gpu_train_batch_size=2 \
         --num_train_epochs=10 \
         --save_steps=1000
-        # --fp16
+        --fp16
 fi
