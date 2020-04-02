@@ -2,7 +2,7 @@ from math import ceil
 from classification.tacred import TACREDProcessor
 from classification.docred import DocREDProcessor
 
-dataset = 'DocRED'
+dataset = 'TACRED'
 
 if dataset == 'TACRED':
     relation_names = ["per:children", "org:founded_by", "org:country_of_headquarters", "per:religion", "per:spouse", "per:origin", "per:date_of_death", "per:city_of_death"]
@@ -28,3 +28,5 @@ elif dataset == 'DocRED':
         negatives = len([e for e in examples if e.label == 'NOTA'])
         assert positives + negatives == len(examples)
         print(f"{relation_name}: {ceil(negatives / positives)}")
+elif:
+    print("Wrong dataset name")
