@@ -405,9 +405,9 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
         if args.output_mode == "classification":
             preds = np.argmax(preds, axis=1)
         elif args.output_mode == "regression":
-            preds = np.squeeze(preds)
-        #Currently the positive label is always the first (Accurding to DocREDProcessor get_labels)
-        positive_label_index = 0
+            preds = np.squeeze(preds) >= 0.5
+
+        positive_label_index = 1
         result = compute_metrics(eval_task, preds, out_label_ids, positive_label_index)
         results.update(result)
 

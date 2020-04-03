@@ -85,7 +85,7 @@ class TACREDProcessor(REProcessor):
         return relation
 
     def _relation_label(self, relation_name: str) -> str:
-        return relation_name if self._positive_relation(relation_name) else NEGATIVE_LABEL
+        return 1 if self._positive_relation(relation_name) else 0
 
     def _positive_relation(self, relation_name: str) -> bool:
         return relation_name == self.positive_label

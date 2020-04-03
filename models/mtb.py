@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torch.nn import CrossEntropyLoss
+from torch.nn import BCEWithLogitsLoss
 
 from transformers.configuration_roberta import RobertaConfig
 from transformers.modeling_bert import BertPreTrainedModel
@@ -45,8 +45,8 @@ class RobertaForRelationClassification(BertPreTrainedModel):
 
         outputs = (logits,) + outputs[2:]
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss_fct = BCEWithLogitsLoss()
+            loss = loss_fct(logits.view(-1), labels)
             outputs = (loss,) + outputs
 
         return outputs  # (loss), logits, (hidden_states), (attentions)
