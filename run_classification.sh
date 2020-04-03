@@ -13,11 +13,13 @@ num_positive_examples=$(jq ".num_positive_examples" "$OTO_INPUT")
 ratio_negative_examples=$(jq ".ratio_negative_examples" "$OTO_INPUT")
 logging_steps=$(jq ".logging_steps" "$OTO_INPUT")
 training_method=$(jq -r ".training_method" "$OTO_INPUT")
+num_train_epochs=$(jq -r ".max_epochs" "$OTO_INPUT")
 seed=$(jq ".seed" "$OTO_INPUT")
 task=$(jq -r ".task" "$OTO_INPUT")
 
 if [[ $seed = null ]]; then seed=1; fi
-if [[ $logging_steps = null ]]; then logging_steps=$(( 100 < $num_positive_examples ? 100 : $num_positive_examples )); fi
+if [[ $logging_steps = null ]]; then $logging_steps=100; fi
+if [[ $num_train_epochs = null ]]; then $num_train_epochs=500; fi
 
 if [[ $training_method = null ]]; then training_method="annotated"; fi
 if [[ $training_method = "annotated" ]]
@@ -60,12 +62,12 @@ python run_classification.py \
   --do_full_dev_eval \
   --do_full_test_eval \
   --evaluate_during_training \
-  --patience 10 \
+  --patience 8 \
   --relation_name $relation_name \
   --num_positive_examples $num_positive_examples \
   --ratio_negative_examples $ratio_negative_examples \
   --type_independent_neg_sample \
-  --num_train_epochs 200 \
+  --num_train_epochs $num_train_epochs \
   --fp16 \
   --logging_steps $logging_steps \
   --save_steps $logging_steps \
