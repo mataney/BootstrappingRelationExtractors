@@ -18,8 +18,8 @@ seed=$(jq ".seed" "$OTO_INPUT")
 task=$(jq -r ".task" "$OTO_INPUT")
 
 if [[ $seed = null ]]; then seed=1; fi
-if [[ $logging_steps = null ]]; then $logging_steps=100; fi
-if [[ $num_train_epochs = null ]]; then $num_train_epochs=500; fi
+if [[ $logging_steps = null ]]; then logging_steps=100; fi
+if [[ $num_train_epochs = null ]]; then num_train_epochs=500; fi
 
 if [[ $training_method = null ]]; then training_method="annotated"; fi
 if [[ $training_method = "annotated" ]]
