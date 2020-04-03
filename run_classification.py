@@ -401,10 +401,11 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
                     relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
-        normalized_preds = torch.from_numpy(preds).softmax(1)
         if args.output_mode == "classification":
             preds = np.argmax(preds, axis=1)
+            normalized_preds = torch.from_numpy(preds).softmax(1)[preds]
         elif args.output_mode == "regression":
+            normalized_preds = preds
             preds = np.squeeze(preds) >= 0.5
 
         positive_label_index = 1
@@ -421,9 +422,9 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
         if (args.task_name == "docred" or args.task_name == "tacred") and 'full' in set_type:
             full_eval_results = []
             for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
-                if pred == positive_label_index:
+                if (args.output_mode == "regression" and pred) or (args.output_mode == "classification" and pred == positive_label_index):
                     relation_id = RELATION_MAPPING[args.task_name][args.relation_name]['id']
-                    full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence[pred].item()})
+                    full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence.item()})
             output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
             json.dump(full_eval_results, open(output_eval_file, "w"))
 
