@@ -12,7 +12,7 @@ done
 
 export PYTHONPATH=$PYTHONPATH:../transformers
 
-if [ $local_test == "0" ];then
+if [ $local_test == "1" ];then
     python run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
@@ -27,12 +27,12 @@ else
     python run_lm_finetuning.py \
         --output_dir=$output_dir \
         --model_type=gpt2 \
-        --model_name_or_path=gpt2-large \
+        --model_name_or_path=gpt2-medium \
         --do_train \
         --train_data_file=data/tacred/for_generation/train.src \
         --block_size=512 \
         --per_gpu_train_batch_size=2 \
         --num_train_epochs=10 \
-        --save_steps=1000
+        --save_steps=1000 \
         --fp16
 fi

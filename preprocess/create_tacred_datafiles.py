@@ -2,6 +2,7 @@ import argparse
 import torch
 import os
 import json
+from tqdm import tqdm
 
 from relation_canonical_form import CANONICAL_FORMS, PREDICATES
 
@@ -68,7 +69,7 @@ def main(args):
     srcs = []
     if not args.src_and_tgt_one_file_with_go:
         tgts = []
-    for relation_dict in parsed_json:
+    for relation_dict in tqdm(parsed_json):
         if relation_dict['relation'] == NO_RELATION and not args.allow_no_relation:
             continue
 

@@ -15,7 +15,7 @@ CANONICAL_FORMS = {
     "org:alternate_names": ["{subj} known as {obj} .",
                             "{subj}, formally known as {obj} .",
                             "{subj}, then called {obj} .",
-                            "Called {subj} or {obj} ."],
+                            "{subj} or {obj} ."],
     "per:cities_of_residence": ["{subj} lived in {obj} .",
                                 "{subj} moved to {obj} .",
                                 "{subj}'s home in {obj} .",
