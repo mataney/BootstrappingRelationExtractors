@@ -26,6 +26,7 @@ import random
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
@@ -405,7 +406,7 @@ def evaluate(args, model, tokenizer, prefix="", set_type="full_dev_eval"):
             preds = np.argmax(preds, axis=1)
             normalized_preds = torch.from_numpy(preds).softmax(1)[preds]
         elif args.output_mode == "regression":
-            normalized_preds = preds
+            normalized_preds = F.sigmoid(preds)
             preds = np.squeeze(preds) >= 0.5
 
         positive_label_index = 1
