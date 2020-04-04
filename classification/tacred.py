@@ -79,7 +79,8 @@ class TACREDProcessor(REProcessor):
             reader = csv.reader(f, delimiter='\t')
             for i, doc in enumerate(reader):
                 if i in row_ids:
-                    yield TACREDSearchExample(i, doc[0], doc[1])
+                    label = self._relation_label(doc[1])
+                    yield TACREDSearchExample(i, doc[0], label)
 
     def relation_name_adapter(self, relation: str):
         return relation
