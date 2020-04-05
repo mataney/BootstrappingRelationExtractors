@@ -2,7 +2,7 @@ import argparse
 from copy import deepcopy
 import json
 
-PRINT_FOR_LATEX = True
+PRINT_FOR_LATEX = False
 
 class ExploreDocRED:
     @staticmethod
@@ -126,7 +126,6 @@ class ExploreDocRED:
 
         for ent in entities:
             color = 'red' if ent['type'] == 'head' else 'orange'
-            import ipdb; ipdb.set_trace()
             text[ent['sent_id']].insert(ent['pos'][-1], colors['back_to_white'])
             text[ent['sent_id']].insert(ent['pos'][0], colors[color])
 
@@ -227,7 +226,6 @@ class ExploreTACRED:
         for ent in entities:
             color = 'red' if ent['type'] == 'head' else 'orange'
             if PRINT_FOR_LATEX:
-                # import ipdb; ipdb.set_trace()
                 text.insert(ent['pos'][-1], '}')
                 text.insert(ent['pos'][0], f"{{ \color{{{color}}} ")
             else:

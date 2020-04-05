@@ -66,7 +66,6 @@ python run_classification.py \
   --relation_name $relation_name \
   --num_positive_examples $num_positive_examples \
   --ratio_negative_examples $ratio_negative_examples \
-  --type_independent_neg_sample \
   --num_train_epochs $num_train_epochs \
   --fp16 \
   --logging_steps $logging_steps \
