@@ -335,7 +335,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
+def evaluate(args, model, tokenizer, prefix="", set_type="full_dev_eval"):
     # Loop to handle MNLI double evaluation (matched, mis-matched)
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + "-MM") if args.task_name == "mnli" else (args.output_dir,)
@@ -401,13 +401,14 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
                     relation_tails = np.append(relation_tails, batch[7].detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
-        normalized_preds = torch.from_numpy(preds).softmax(1)
         if args.output_mode == "classification":
             preds = np.argmax(preds, axis=1)
+            normalized_preds = torch.from_numpy(preds).softmax(1)[preds]
         elif args.output_mode == "regression":
-            preds = np.squeeze(preds)
-        #Currently the positive label is always the first (Accurding to DocREDProcessor get_labels)
-        positive_label_index = 0
+            normalized_preds = 1/(1 + np.exp(-preds))
+            preds = np.squeeze(preds) >= 0.5
+
+        positive_label_index = 1
         result = compute_metrics(eval_task, preds, out_label_ids, positive_label_index)
         results.update(result)
 
@@ -421,9 +422,9 @@ def evaluate(args, model, tokenizer, prefix="", set_type="dev_eval"):
         if (args.task_name == "docred" or args.task_name == "tacred") and 'full' in set_type:
             full_eval_results = []
             for title, h_idx, t_idx, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
-                if pred == positive_label_index:
+                if (args.output_mode == "regression" and pred) or (args.output_mode == "classification" and pred == positive_label_index):
                     relation_id = RELATION_MAPPING[args.task_name][args.relation_name]['id']
-                    full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence[pred].item()})
+                    full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence.item()})
             output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
             json.dump(full_eval_results, open(output_eval_file, "w"))
 

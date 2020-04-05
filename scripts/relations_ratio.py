@@ -12,8 +12,8 @@ if dataset == 'TACRED':
         type_independent_neg_sample = False
         processor = TACREDProcessor(relation_name, num_positive, negative_ratio, type_independent_neg_sample)
         examples = processor.get_examples_by_set_type('full_dev_eval', 'data/tacred')
-        positives = len([e for e in examples if e.label == relation_name])
-        negatives = len([e for e in examples if e.label == 'NOTA'])
+        positives = len([e for e in examples if e.label == 1])
+        negatives = len([e for e in examples if e.label == 0])
         assert positives + negatives == len(examples)
         print(f"{relation_name}: {ceil(negatives / positives)}")
 elif dataset == 'DocRED':
@@ -24,9 +24,9 @@ elif dataset == 'DocRED':
         type_independent_neg_sample = False
         processor = DocREDProcessor(relation_name, num_positive, negative_ratio, type_independent_neg_sample)
         examples = processor.get_examples_by_set_type('full_dev_eval', 'data/DocRED')
-        positives = len([e for e in examples if e.label == relation_name])
-        negatives = len([e for e in examples if e.label == 'NOTA'])
+        positives = len([e for e in examples if e.label == 1])
+        negatives = len([e for e in examples if e.label == 0])
         assert positives + negatives == len(examples)
         print(f"{relation_name}: {ceil(negatives / positives)}")
-elif:
+else:
     print("Wrong dataset name")

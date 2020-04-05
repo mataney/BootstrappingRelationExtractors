@@ -137,8 +137,8 @@ class REProcessor(DataProcessor):
         examples = list(examples)
         if not eval:
             shuffle(examples)
-        positive_examples = get_first_num_examples(self.positive_label, num_positive)
-        negative_examples = get_first_num_examples(NEGATIVE_LABEL, len(positive_examples) * negative_ratio)
+        positive_examples = get_first_num_examples(1, num_positive)
+        negative_examples = get_first_num_examples(0, len(positive_examples) * negative_ratio)
         pos_and_neg_examples = positive_examples + negative_examples
         if not eval:
             shuffle(pos_and_neg_examples)
@@ -183,7 +183,7 @@ class REProcessor(DataProcessor):
 
     def get_labels(self) -> List[str]:
         """Gets the list of labels for this data set."""
-        return [self.positive_label, NEGATIVE_LABEL]
+        return [None]
 
 #This is a copy of glue_convert_examples_to_features with minor changes
 def convert_examples_to_features(
@@ -363,7 +363,7 @@ class TitleNames:
         else:
             raise ValueError("Task not found: %s" % (task))
 
-output_modes = {"docred": "classification", "tacred": "classification"}
+output_modes = {"docred": "regression", "tacred": "regression"}
 processors = Processors()
 RELATION_MAPPING = RelationMapping()
 TITLE_NAMES = TitleNames()
