@@ -163,9 +163,9 @@ def main():
         help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(MODEL_CLASSES.keys()),
     )
 
-    parser.add_argument("--prompt", type=str, default="")
+    parser.add_argument("--prompt", type=str, default="", required=True)
     parser.add_argument("--out_file", type=str, default="")
-    parser.add_argument("--length", type=int, default=20)
+    parser.add_argument("--length", type=int, default=50)
     parser.add_argument("--stop_token", type=str, default=None, help="Token at which text generation is stopped")
 
     parser.add_argument(
