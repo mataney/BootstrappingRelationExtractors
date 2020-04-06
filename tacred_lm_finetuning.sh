@@ -19,7 +19,7 @@ if [ $local_test == "1" ];then
         --model_name_or_path=gpt2 \
         --do_train \
         --train_data_file=data/tacred/for_generation/train.src \
-        --train_data_file=data/tacred/for_generation/train.special_tokens \
+        --special_tokens_file=data/tacred/for_generation/train.special_tokens \
         --block_size=512 \
         --per_gpu_train_batch_size=2 \
         --num_train_epochs=2 \
@@ -31,7 +31,7 @@ else
         --model_name_or_path=gpt2-medium \
         --do_train \
         --train_data_file=data/tacred/for_generation/train.src \
-        --train_data_file=data/tacred/for_generation/train.special_tokens \
+        --special_tokens_file=data/tacred/for_generation/train.special_tokens \
         --block_size=512 \
         --per_gpu_train_batch_size=2 \
         --num_train_epochs=10 \
