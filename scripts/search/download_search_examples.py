@@ -14,8 +14,8 @@ from classification.re_config import RELATIONS_ENTITY_TYPES_FOR_SEARCH
 
 SINGLE_TRIGGER_PATTERNS = {
     "per:children": [
-        "{e1:e=PERSON John} 's [t:w=daughter daughter] , {e2:e=PERSON Tim} .",
-        "{e1:e=PERSON Mary} is survived by her [t:w=son son] , {e2:e=PERSON John} .",
+        "{e1:e=PERSON John} 's [t:w=son|daughter|child|children daughter] , {e2:e=PERSON Tim} .",
+        "{e1:e=PERSON Mary} is survived by her [t:w=son|daughter|child|children son] , {e2:e=PERSON John} .",
         "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
         ],
     # "per:date_of_birth": [
@@ -30,13 +30,13 @@ SINGLE_TRIGGER_PATTERNS = {
     #     ],
     "org:founded_by": [
         "{e1:e=ORGANIZATION Microsoft} [t:w=founder founder] {e2:e=PERSON Mary} likes running.",
-        "{e2:e=PERSON Mary} , who [t:w=founded founded] {e1:e=ORGANIZATION Microsoft} was thirsty.",
+        "{e2:e=PERSON Mary} [t:w=founded founded] {e1:e=ORGANIZATION Microsoft}.",
         "{e1:e=ORGANIZATION Microsoft} was [t:w=founded founded] [$ by] {e2:e=PERSON Mary}.",
         ],
     "org:country_of_headquarters": [
         "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {e2:e=LOCATION England} .",
-        "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
-        "{e1:e=ORGANIZATION Microsoft}, [t:w=based based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
+        "{e2:e=LOCATION Israel} [$ '] {e1:e=ORGANIZATION BIU} is the largest university in the world.",
+        "{e1:e=ORGANIZATION BIU} [$ in] {e2:e=LOCATION Israel} is the largest university in the world.",
         ],
     # "per:country_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
@@ -88,8 +88,8 @@ PATTERNS = {
         ],
     "org:country_of_headquarters": [
         "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} .",
-        "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
-        "{e1:e=ORGANIZATION Microsoft}, [t:w=based|headquarter|headquartered|headquarters|base based] in {city:e=LOCATION London} , {e2:e=LOCATION England} .",
+        "{e2:e=LOCATION Israel} [$ '] {e1:e=ORGANIZATION BIU} is the largest university in the world.",
+        "{e1:e=ORGANIZATION BIU} [$ in] {e2:e=LOCATION Israel} is the largest university in the world.",
         ],
     # "per:country_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
