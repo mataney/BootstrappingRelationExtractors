@@ -16,7 +16,7 @@ python run_generation.py \
     --model_name_or_path=$model_dir \
     --out_file=$out_file \
     --num_return_sequences=$num_samples \
-    --prompt=$prompt \
+    --prompt="$prompt" \
     --length=50 \
     --p=0.9 \
     # --k=5 \

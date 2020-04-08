@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from utils import read_file, write_to_file
+from old.utils import read_file, write_to_file
 
 def filter_out(sentences, triggers):
     filtered_sentences = []

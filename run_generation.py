@@ -47,6 +47,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
+MAX_BATCH = 100
 
 MODEL_CLASSES = {
     "gpt2": (GPT2LMHeadModel, GPT2Tokenizer),
@@ -217,34 +218,45 @@ def main():
     encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=False, return_tensors="pt")
     encoded_prompt = encoded_prompt.to(args.device)
 
-    output_sequences = model.generate(
-        input_ids=encoded_prompt,
-        max_length=args.length,
-        temperature=args.temperature,
-        top_k=args.k,
-        top_p=args.p,
-        do_sample=args.k > 1 or args.p < 1.0,
-        repetition_penalty=args.repetition_penalty,
-        num_return_sequences=args.num_return_sequences,
-    )
-
-    generated_sequence = output_sequences[0, :, encoded_prompt.size(1):].tolist()
-
-    texts = []
-    for seq in generated_sequence:
-        text = tokenizer.decode(seq, clean_up_tokenization_spaces=True)
-        text = text[: text.find(args.stop_token) if args.stop_token else None]
-        texts.append(text)
-    
-    texts = '\n'.join(texts)
+    samples_splits = args.num_return_sequences//MAX_BATCH * [MAX_BATCH]
+    if args.num_return_sequences%MAX_BATCH > 0: samples_splits.append(args.num_return_sequences%MAX_BATCH)
 
     if args.out_file:
         file_path = os.path.join(args.model_name_or_path, args.out_file)
         out_file = open(file_path, "w")
-        out_file.write(texts)
-        print(f"Generations written to: {file_path}")
-    else:
-        print(texts)
+
+    for curr_samples in samples_splits:
+        output_sequences = model.generate(
+            input_ids=encoded_prompt,
+            max_length=args.length,
+            temperature=args.temperature,
+            top_k=args.k,
+            top_p=args.p,
+            do_sample=args.k > 1 or args.p < 1.0,
+            repetition_penalty=args.repetition_penalty,
+            num_return_sequences=curr_samples,
+        )
+
+        generated_sequence = output_sequences[0, :, encoded_prompt.size(1):].tolist()
+
+        texts = []
+        for seq in generated_sequence:
+            text = tokenizer.decode(seq, clean_up_tokenization_spaces=True)
+            text = text[: text.find(args.stop_token) if args.stop_token else None]
+            text = text[: text.find('\n')]
+            texts.append(text)
+
+        texts = '\n'.join(texts)
+
+        if args.out_file:
+            out_file.write(texts)
+            print(f"Generations written to: {file_path}")
+        else:
+            print(texts)
+
+    if args.out_file:
+        out_file.close()
+
 
 
 if __name__ == "__main__":
