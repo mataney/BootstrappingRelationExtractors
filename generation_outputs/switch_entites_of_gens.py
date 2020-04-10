@@ -18,7 +18,6 @@ def main(args):
         for i, gen in enumerate(gens):
             subbed = re.sub('\[E1\] (.*?) \[\/E1\]', f'[E1] {e1s[i].rstrip()} [/E1]', gen)
             subbed = re.sub('\[E2\] (.*?) \[\/E2\]', f'[E2] {e2s[i].rstrip()} [/E2]', subbed)
-            import ipdb; ipdb.set_trace()
             assert subbed != gen
             f.write(subbed)
 
