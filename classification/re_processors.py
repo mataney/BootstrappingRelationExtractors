@@ -102,7 +102,7 @@ class REProcessor(DataProcessor):
 
     def get_generation_train_examples(self, data_dir: str) -> List[InputExample]:
         positive_examples = self.sample_generation_examples(
-            os.path.join('generation_outputs', self.positive_label+'.txt'),
+            os.path.join('data/classification_using_generation', self.positive_label+'.txt'),
             self.num_positive)
 
         negative_examples = self.sample_search_examples_for_generation(
@@ -115,6 +115,8 @@ class REProcessor(DataProcessor):
         with open(file_path, 'r') as file:
             gens = file.readlines()
 
+        if num_to_sample > len(gens):
+            num_to_sample = len(gens)
         gens = sample(gens, num_to_sample)
         return list(self._create_generation_examples(gens))
 
@@ -137,8 +139,8 @@ class REProcessor(DataProcessor):
         nums_to_sample = distributed_num_to_sample(num_to_sample, nums_of_patterns)
 
         examples = []
-        for file, num_to_sample, num_of_patterns in zip(pos_and_neg_files, nums_to_sample, nums_of_patterns):
-            indices = self._equal_samples_per_pattern(num_of_patterns, int(num_to_sample))
+        for file, curr_num_to_sample, num_of_patterns in zip(pos_and_neg_files, nums_to_sample, nums_of_patterns):
+            indices = self._equal_samples_per_pattern(num_of_patterns, curr_num_to_sample)
             examples += list(self._create_search_examples_given_row_ids(
                 os.path.join(data_dir, file), indices
             ))
@@ -219,12 +221,12 @@ class REProcessor(DataProcessor):
     @classmethod
     def _equal_samples_per_pattern(cls, num_of_patterns, num_to_sample):
         ret = []
-        num_to_sample = ceil(num_to_sample / len(num_of_patterns))
+        num_to_sample_per_pattern = ceil(num_to_sample / len(num_of_patterns))
         file_shift = 0
         for _, pattern_examples in num_of_patterns.items():
-            if num_to_sample > pattern_examples:
-                num_to_sample = pattern_examples
-            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample)
+            if num_to_sample_per_pattern > pattern_examples:
+                num_to_sample_per_pattern = pattern_examples
+            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample_per_pattern)
             file_shift += pattern_examples
             ret += indices
 
