@@ -2,14 +2,17 @@ import argparse
 import torch
 import os
 import json
+from tqdm import tqdm
 
-from relation_canonical_form import CANONICAL_FORMS
+from relation_canonical_form import CANONICAL_FORMS, PREDICATES
 
 from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
 
 CLEANINGMAP = {'-RRB-': ')', '-LRB-': '(', '-LSB-': '[',
                '-RSB-': ']', '-LCB-': '{', '-RCB-': '}',
                '&nbsp;': ' ', '&quot;': "'", '--': '-', '---': '-'}
+
+DISALLOWED_PRONOUNS = {"me", "us", "you", "her", "him", "it", "them", "my", "our", "your", "her", "his", "their"}
 
 MODEL_CLASSES = {
     'gpt2': (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
@@ -29,7 +32,7 @@ END_E2 = '<|\E2|>'
 
 NO_RELATION = "no_relation"
 
-RELATIONS_TO_LEAVE_OUT = []
+RELATIONS_TO_LEAVE_OUT = ["per:children", "org:founded_by", "org:country_of_headquarters", "per:religion", "per:spouse", "per:origin", "per:date_of_death", "per:city_of_death"]
 
 def main(args):
     SPECIAL_TOKENS = [GO]
@@ -58,7 +61,6 @@ def main(args):
     # Add Special Tokens
     tokenizer.add_special_tokens({'additional_special_tokens': SPECIAL_TOKENS})
 
-
     assert os.path.isfile(args.file_path)
 
     with open(args.file_path, encoding="utf-8") as f:
@@ -67,7 +69,7 @@ def main(args):
     srcs = []
     if not args.src_and_tgt_one_file_with_go:
         tgts = []
-    for relation_dict in parsed_json:
+    for relation_dict in tqdm(parsed_json):
         if relation_dict['relation'] == NO_RELATION and not args.allow_no_relation:
             continue
 
@@ -80,6 +82,9 @@ def main(args):
         obj = " ".join(relation_dict['token'][obj_start_idx : obj_end_idx + 1])
         example_text = relation_dict['token']
 
+        if skip_disallowed_pronouns(subj, obj):
+            continue
+
         if args.mark_relation_args:
             example_text = mark_args(example_text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx)
         elif args.truncate_noise:
@@ -90,26 +95,45 @@ def main(args):
         if args.anonymize_tgt:
             tgt = anonymize(tgt, subj, obj)
 
+        relation_name = relation_dict['relation']
         if args.one_form_per_relation:
-            relation_contexts = [CANONICAL_FORMS[relation_dict['relation']][0]]
+            relation_contexts = [CANONICAL_FORMS[relation_name][0]]
         else:
-            relation_contexts = CANONICAL_FORMS[relation_dict['relation']]
+            relation_contexts = CANONICAL_FORMS[relation_name]
         for relation_context in relation_contexts:
             if args.anonymize_tgt:
                 src = relation_context.replace("{subj}", f"{E1} {subj} {END_E1}").replace("{obj}", f"{E2} {obj} {END_E2}")
             else:
                 src = relation_context.replace("{subj}", subj).replace("{obj}", obj)
+            src = specific_predicate_for_relation(src, tgt, relation_name)
+
+            if src is None:
+                continue
+
             if args.src_and_tgt_one_file_with_go:
                 srcs.append(src + f" {GO} " + tgt+'\n')
             else:
                 srcs.append(src+'\n')
                 tgts.append(tgt+'\n')
-        
+
     with open(args.save_to_file+'.src', 'w') as f: f.writelines(srcs)
     if not args.src_and_tgt_one_file_with_go:
         with open(args.save_to_file+'.tgt', 'w') as f: f.writelines(tgts)
 
     with open(args.save_to_file+'.special_tokens', 'w') as f: f.writelines(f"{t}\n" for t in SPECIAL_TOKENS)
+
+def specific_predicate_for_relation(src, tgt, relation_name):
+    if "{predicate}" not in src:
+        return src
+    predicate = PREDICATES[relation_name]['default']
+    lowered_tgt = tgt.lower()
+    for t in PREDICATES[relation_name]:
+        if t in lowered_tgt:
+            predicate = t
+            break
+    if predicate is None:
+        return None
+    return src.replace("{predicate}", predicate)
 
 def mark_args(text, subj_start_idx, subj_end_idx, obj_start_idx, obj_end_idx):
     if obj_end_idx > subj_end_idx:
@@ -140,6 +164,9 @@ def truncate_noise(example_text, subj_start_idx, subj_end_idx, obj_start_idx, ob
 
 def leave_some_relations_out(relation):
     return relation in RELATIONS_TO_LEAVE_OUT
+
+def skip_disallowed_pronouns(subj, obj):
+    return subj.lower() in DISALLOWED_PRONOUNS or obj.lower() in DISALLOWED_PRONOUNS
 
 def clean_token(tokens):
     return [CLEANINGMAP.get(t, t) for t in tokens]

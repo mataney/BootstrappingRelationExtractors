@@ -31,6 +31,9 @@ then
 elif [[ $training_method = "search" ]]
 then
   do_train_type='--do_search_train'
+elif [[ $training_method = "generation" ]]
+then
+  do_train_type='--do_generation_train'
 else
   echo "Wrong training method"
 fi

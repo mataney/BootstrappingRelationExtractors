@@ -663,7 +663,7 @@ def main():
     # Add Special Tokens
     if args.special_tokens_file:
         with open(args.special_tokens_file, 'r') as f:
-            special_tokens = f.readlines()
+            special_tokens = [t.rstrip() for t in f.readlines()]
         tokenizer.add_special_tokens({'additional_special_tokens': special_tokens})
         model.resize_token_embeddings(len(tokenizer))
 

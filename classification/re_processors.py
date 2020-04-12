@@ -13,7 +13,7 @@ from transformers.data.processors.utils import DataProcessor, InputExample
 from classification.re_config import (START_E1,
                                       END_E1,
                                       START_E2,
-                                      END_E2, 
+                                      END_E2,
                                       RELATIONS_ENTITY_TYPES_FOR_SEARCH)
 
 SetType = Literal["train", "distant", "dev_eval", "full_dev_eval", "full_test_eval"]
@@ -57,6 +57,8 @@ class REProcessor(DataProcessor):
             return self.get_distant_train_examples(data_dir)
         elif set_type == "search":
             return self.get_search_train_examples(data_dir)
+        elif set_type == "generation":
+            return self.get_generation_train_examples(data_dir)
         elif set_type == "dev_eval":
             return self.get_eval_examples(data_dir)
         elif set_type == "full_dev_eval":
@@ -91,14 +93,63 @@ class REProcessor(DataProcessor):
         def count_search_results(file: str, relation_name: str):
             return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
 
-        pattern_counts = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
-        indices = self._equal_samples_per_pattern(pattern_counts, num_to_sample)
+        num_of_patterns = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
+        indices = self._equal_samples_per_pattern(num_of_patterns, num_to_sample)
         examples = self._create_search_examples_given_row_ids(
             os.path.join(data_dir, relation), indices
         )
         return list(examples)
 
+    def get_generation_train_examples(self, data_dir: str) -> List[InputExample]:
+        positive_examples = self.sample_generation_examples(
+            os.path.join('data/classification_using_generation', self.positive_label+'.txt'),
+            self.num_positive)
+
+        negative_examples = self.sample_search_examples_for_generation(
+            os.path.join(data_dir, 'search/single_trigger_search'),
+            len(positive_examples) * self.negative_ratio,
+            self.positive_label)
+        return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
+
+    def sample_generation_examples(self, file_path, num_to_sample):
+        with open(file_path, 'r') as file:
+            gens = file.readlines()
+
+        if num_to_sample > len(gens):
+            num_to_sample = len(gens)
+        gens = sample(gens, num_to_sample)
+        return list(self._create_generation_examples(gens))
+
+    def sample_search_examples_for_generation(self, data_dir, num_to_sample, relation):
+        pos_and_neg_files = [relation, self.relations_entity_types_for_search(relation)]
+
+        def count_search_results(file: str):
+            lengths = json.load(open(file, 'r', encoding="utf-8"))
+            return lengths[pos_and_neg_files[0]], lengths[pos_and_neg_files[1]]
+
+        def distributed_num_to_sample(num_to_sample, nums_of_patterns):
+            pos_found = sum(nums_of_patterns[0].values())
+            neg_found = sum(nums_of_patterns[1].values())
+
+            return [int(num_to_sample * pos_found/(pos_found+neg_found)),
+                    int(num_to_sample * neg_found/(pos_found+neg_found))]
+
+
+        nums_of_patterns = count_search_results(os.path.join(data_dir, 'file_lengths.json'))
+        nums_to_sample = distributed_num_to_sample(num_to_sample, nums_of_patterns)
+
+        examples = []
+        for file, curr_num_to_sample, num_of_patterns in zip(pos_and_neg_files, nums_to_sample, nums_of_patterns):
+            indices = self._equal_samples_per_pattern(num_of_patterns, curr_num_to_sample)
+            examples += list(self._create_search_examples_given_row_ids(
+                os.path.join(data_dir, file), indices
+            ))
+        return examples
+
     def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
+        raise NotImplementedError
+
+    def _create_generation_examples(self, raw_generations: List[str]) -> Iterator[InputExample]:
         raise NotImplementedError
 
     def relations_entity_types_for_search(self, relation: str):
@@ -168,14 +219,14 @@ class REProcessor(DataProcessor):
             return list(json.load(f))
 
     @classmethod
-    def _equal_samples_per_pattern(cls, pattern_counts, num_to_sample):
+    def _equal_samples_per_pattern(cls, num_of_patterns, num_to_sample):
         ret = []
-        num_to_sample = ceil(num_to_sample / len(pattern_counts))
+        num_to_sample_per_pattern = ceil(num_to_sample / len(num_of_patterns))
         file_shift = 0
-        for _, pattern_examples in pattern_counts.items():
-            if num_to_sample > pattern_examples:
-                num_to_sample = pattern_examples
-            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample)
+        for _, pattern_examples in num_of_patterns.items():
+            if num_to_sample_per_pattern > pattern_examples:
+                num_to_sample_per_pattern = pattern_examples
+            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample_per_pattern)
             file_shift += pattern_examples
             ret += indices
 

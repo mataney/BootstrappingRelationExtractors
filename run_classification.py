@@ -582,6 +582,7 @@ def main():
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_distant_train", action="store_true", help="Whether to run training on distant supervision data.")
     parser.add_argument("--do_search_train", action="store_true", help="Whether to run training on search supervision data.")
+    parser.add_argument("--do_generation_train", action="store_true", help="Whether to run training on generation supervision data.")
     parser.add_argument("--do_eval_dev", action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--do_full_dev_eval", action="store_true", help="Whether to run eval over all possible relations on train eval split.")
     parser.add_argument("--do_full_test_eval", action="store_true", help="Whether to run eval over all possible relations on dev.")
@@ -662,7 +663,7 @@ def main():
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
-        and (args.do_train or args.do_distant_train or args.do_search_train)
+        and (args.do_train or args.do_distant_train or args.do_search_train or args.do_generation_train)
         and not args.overwrite_output_dir
     ):
         raise ValueError(
@@ -750,8 +751,8 @@ def main():
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
-    splits = ['train', 'distant', 'search']
-    bools = [args.do_train, args.do_distant_train, args.do_search_train]
+    splits = ['train', 'distant', 'search', 'generation']
+    bools = [args.do_train, args.do_distant_train, args.do_search_train, args.do_generation_train]
     splits_to_train = [s for s, b in zip(splits, bools) if b]
     if len(splits_to_train) > 0:
         assert len(splits_to_train) == 1

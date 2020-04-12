@@ -1,21 +1,22 @@
 num_samples=10
 
-while getopts o:f:s: option
+while getopts m:o:s:p: option
 do
 case "${option}"
 in
-o) model_dir=${OPTARG};;
-f) file_to_write=${OPTARG};;
+m) model_dir=${OPTARG};;
+o) out_file=${OPTARG};;
 s) num_samples=${OPTARG};;
+p) prompt=${OPTARG};;
 esac
 done
-export PYTHONPATH=$PYTHONPATH:../pytorch-transformers
 
 python run_generation.py \
     --model_type=gpt2 \
     --model_name_or_path=$model_dir \
-    --file_to_write=$file_to_write \
-    --num_samples=$num_samples \
+    --out_file=$out_file \
+    --num_return_sequences=$num_samples \
+    --prompt="$prompt" \
     --length=50 \
-    --top_p=0.9 \
-    # --top_k=5 \
+    --p=0.9 \
+    # --k=5 \

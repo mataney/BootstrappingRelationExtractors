@@ -11,12 +11,17 @@ T = TypeVar('T', bound='TACREDExample')
 Builder = Callable[[Type[T], int, JsonObject, str], T]
 
 class TACREDExample(InputExample):
-    def __init__(self, id: int, example_json: JsonObject, label: str) -> None:
+    def __init__(self, id: int, text: str, label: str) -> None:
         self.id = id
-        self.text = self._mark_entities(example_json)
+        self.text = text
         self.label = label
 
-    def _mark_entities(self, example_json: JsonObject) -> str:
+    @classmethod
+    def build(cls: Type[T], id: int, example_json: JsonObject, label: str) -> T:
+        return cls(id, cls._mark_entities(example_json), label)
+
+    @classmethod
+    def _mark_entities(cls: Type[T], example_json: JsonObject) -> str:
         e1_start_idx, e1_end_idx = example_json['subj_start'], example_json['subj_end']
         e2_start_idx, e2_end_idx = example_json['obj_start'], example_json['obj_end']
         text = example_json['token'].copy()
@@ -36,16 +41,6 @@ class TACREDExample(InputExample):
 
     def __hash__(self):
         return hash((self.id, self.text, self.label))
-
-    @classmethod
-    def build(cls: Type[T], id: int, example_json: JsonObject, label: str) -> T:
-        return cls(id, example_json, label)
-
-class TACREDSearchExample(InputExample):
-    def __init__(self, id: int, text: str, label: str) -> None:
-        self.id = id
-        self.text = text
-        self.label = label
 
 class TACREDProcessor(REProcessor):
     def __init__(self, relation_name: str, num_positive: int = None, negative_ratio: int = None, type_independent_neg_sample: bool = True) -> None:
@@ -74,13 +69,17 @@ class TACREDProcessor(REProcessor):
             if self._same_entity_types_relation(relation):
                 yield TACREDExample.build(id, relation, label)
 
-    def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
+    def _create_search_examples_given_row_ids(self, search_file: str, row_ids: List[int]) -> Iterator[InputExample]:
         with open(search_file, 'r', encoding="utf-8") as f:
             reader = csv.reader(f, delimiter='\t')
             for i, doc in enumerate(reader):
                 if i in row_ids:
                     label = self._relation_label(doc[1])
-                    yield TACREDSearchExample(i, doc[0], label)
+                    yield TACREDExample(i, doc[0], label)
+
+    def _create_generation_examples(self, raw_generations: List[str]) -> Iterator[InputExample]:
+        for i, gen in enumerate(raw_generations):
+            yield TACREDExample(i, gen.rstrip(), 1)
 
     def relation_name_adapter(self, relation: str):
         return relation
