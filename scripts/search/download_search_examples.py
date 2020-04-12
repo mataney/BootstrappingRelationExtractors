@@ -14,9 +14,9 @@ from classification.re_config import RELATIONS_ENTITY_TYPES_FOR_SEARCH
 
 SINGLE_TRIGGER_PATTERNS = {
     "per:children": [
-        "{e1:e=PERSON John} 's [t:w=son|daughter|child|children daughter] , {e2:e=PERSON Tim} .",
-        "{e1:e=PERSON Mary} is survived by her [t:w=son|daughter|child|children son] , {e2:e=PERSON John} .",
-        "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
+        "{e1:e=PERSON John} 's [t:w=son|daughter|child|children|daughters|sons daughter] , {e2:e=PERSON Tim} .",
+        "{e1:e=PERSON Mary} did something to her [t:w=son|daughter|child|children|daughters|sons son], {e2:e=PERSON John} in 1992.",
+        "{e1:e=PERSON Mary} was survived by her 4 [t:w=son|daughter|child|children|daughters|sons sons], John, John, {e2:e=PERSON John} and John."
         ],
     # "per:date_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
@@ -34,9 +34,9 @@ SINGLE_TRIGGER_PATTERNS = {
         "{e1:e=ORGANIZATION Microsoft} was [t:w=founded founded] [$ by] {e2:e=PERSON Mary}.",
         ],
     "org:country_of_headquarters": [
-        "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {e2:e=LOCATION England} .",
-        "{e2:e=LOCATION Israel} [$ '] {e1:e=ORGANIZATION BIU} is the largest university in the world.",
-        "{e1:e=ORGANIZATION BIU} [$ in] {e2:e=LOCATION Israel} is the largest university in the world.",
+        "John Doe, a professor at the {e1:e=ORGANIZATION Technion} [$ in] {e2:e=LOCATION Israel} likes running.",
+        "{e2:e=LOCATION Israel} [$ '] largest university is {e1:e=ORGANIZATION BIU}.",
+        "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {e2:e=LOCATION England} ."
         ],
     # "per:country_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
@@ -44,19 +44,19 @@ SINGLE_TRIGGER_PATTERNS = {
     #     "{e1:e=PERSON John} [$ -LRB-] [t:w=born born] in Bremen, {e2:e=LOCATION Germany} [$ -RRB-] .",
     #     ],
     "per:spouse": [
-        "{e1:e=PERSON John} 's [t:w=wife wife], {e2:e=PERSON Mary} , died in 1991 .",
-        "{e1:e=PERSON John} [t:w=married married] {e2:e=PERSON Mary}",
+        "{e1:e=PERSON John} 's [t:w=wife|husband wife], {e2:e=PERSON Mary} , died in 1991 .",
+        "{e1:e=PERSON John} [t:l=marry married] {e2:e=PERSON Mary}",
         "{e1:e=PERSON John} is [t:w=married married] to {e2:e=PERSON Mary}",
         ],
     "per:origin": [
         "{e2:e=MISC Scottish} {e1:e=PERSON Mary} is high.",
-        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} descent.",
-        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} [t:w=descent descent].",
+        "{e1:e=PERSON Mary} is a {e2:e=MISC Scottish} professor.",
+        "{e1:e=PERSON Mary}, the {e2:e=LOCATION US} professor.",
         ],
     "per:date_of_death": [
+        "{e1:e=PERSON John} was announced [t:w=dead dead] in {e2:e=DATE 1943}.",
         "{e1:e=PERSON John} [t:w=died died] in {e2:e=DATE 1943}.",
-        "{e1:e=PERSON John} [$ -LRB-] [t:w=died died] {e2:e=DATE 1997} [$ -RRB-] .",
-        "{e1:e=PERSON John} [$ -LRB-] [$:e=DATE date] [$ -] {e2:e=DATE 1997} [$ -RRB-] .",
+        "{e1:e=PERSON John}, an NLP scientist, [t:w=died died] {e2:e=DATE 1943}."
         ],
     "per:city_of_death": [
         "{e1:e=PERSON John} [t:w=died died] in {e2:e=LOCATION London}, {country:e=LOCATION England} in 1997.",
@@ -67,9 +67,9 @@ SINGLE_TRIGGER_PATTERNS = {
 
 PATTERNS = {
     "per:children": [
-        "{e1:e=PERSON John} 's [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
-        "{e1:e=PERSON John} is survived by her [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson child] , {e2:e=PERSON Mary} .",
-        "{e1:e=PERSON Mary} gave [t:w=birth birth] [$ to] {e2:e=PERSON John}",
+        "{e1:e=PERSON John} 's [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson daughter] , {e2:e=PERSON Tim} .",
+        "{e1:e=PERSON Mary} did something to her [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson son], {e2:e=PERSON John} in 1992.",
+        "{e1:e=PERSON Mary} was survived by her 4 [t:w=baby|child|children|daughter|daughters|son|sons|step-daughter|step-son|step-child|step-children|stepchildren|stepdaughter|stepson sons], John, John, {e2:e=PERSON John} and John."
         ],
     # "per:date_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=DATE 1997} .",
@@ -87,9 +87,9 @@ PATTERNS = {
         "{e1:e=ORGANIZATION Microsoft} was [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] [$ by] {e2:e=PERSON Mary}.",
         ],
     "org:country_of_headquarters": [
-        "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} .",
-        "{e2:e=LOCATION Israel} [$ '] {e1:e=ORGANIZATION BIU} is the largest university in the world.",
-        "{e1:e=ORGANIZATION BIU} [$ in] {e2:e=LOCATION Israel} is the largest university in the world.",
+        "John Doe, a professor at the {e1:e=ORGANIZATION Technion} [$ in] {e2:e=LOCATION Israel} likes running.",
+        "{e2:e=LOCATION Israel} [$ '] largest university is {e1:e=ORGANIZATION BIU}.",
+        "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} ."
         ],
     # "per:country_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
@@ -108,13 +108,13 @@ PATTERNS = {
         ],
     "per:origin": [
         "{e2:e=MISC Scottish} {e1:e=PERSON Mary} is high.",
-        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} descent.",
-        "{e1:e=PERSON Mary} is of {e2:e=MISC Scottish} [t:w=descent|nationality|ancestry|heritage|roots|blood|maternal|birth|descends|paternal|descended|raised|born|background|descend|origins|lineage|origin|ancestors|descendant|ancestral|country descent].",
+        "{e1:e=PERSON Mary} is a {e2:e=MISC Scottish} professor.",
+        "{e1:e=PERSON Mary}, the {e2:e=LOCATION US} professor.",
         ],
     "per:date_of_death": [
+        "{e1:e=PERSON John} was announced [t:w=dead dead] in {e2:e=DATE 1943}.",
         "{e1:e=PERSON John} [t:w=died|executed|killed|dies|perished|succumbed|passed|murdered|suicided died] in {e2:e=DATE 1943}.",
-        "{e1:e=PERSON John} [$ -LRB-] [t:w=died|executed|killed|dies|perished|succumbed|passed|murdered|suicided died] {e2:e=DATE 1997} [$ -RRB-] .",
-        "{e1:e=PERSON John} [$ -LRB-] [$:e=DATE date] [$ -] {e2:e=DATE 1997} [$ -RRB-] .",
+        "{e1:e=PERSON John}, an NLP scientist, [t:w=died|executed|killed|dies|perished|succumbed|passed|murdered|suicided died] {e2:e=DATE 1943}."
         ],
     "per:city_of_death": [
         "{e1:e=PERSON John} [t:w=died|executed|killed|dies|perished|succumbed|passed|murdered|suicided died] in {e2:e=LOCATION London}, {country:e=LOCATION England} in 1997.",
@@ -141,19 +141,21 @@ SCRIPT_DIR = 'scripts/search'
 def main(args):
     if args.triggers == 'single':
         patterns = SINGLE_TRIGGER_PATTERNS
-        download_dir = os.path.join(SCRIPT_DIR, 'single_trigger_search_results')
-        output_dir = os.path.join('data', args.dataset, 'search', 'single_trigger_search')
+        download_dir = os.path.join(SCRIPT_DIR, 'single_trigger_search_results3')
+        output_dir = os.path.join('data', args.dataset, 'search', 'single_trigger_search3')
     else:
         patterns = PATTERNS
-        download_dir = os.path.join(SCRIPT_DIR, 'all_triggers_search_results')
-        output_dir = os.path.join('data', args.dataset, 'search', 'all_triggers_search')
+        download_dir = os.path.join(SCRIPT_DIR, 'all_triggers_search_results3')
+        output_dir = os.path.join('data', args.dataset, 'search', 'all_triggers_search3')
     positive_outfiles, negative_outfiles = None, None
     if args.download:
         positive_outfiles = download_from_spike_search(download_dir, patterns, LIMIT)
         # negative_outfiles = download_from_spike_search(download_dir, NEGATIVE_PATTERNS, LIMIT, use_odinson=True)
     if args.merge_patterns:
         if positive_outfiles is None:
-            positive_outfiles, negative_outfiles = get_file_names(download_dir)
+            positive_outfiles, _ = get_file_names(download_dir)
+        if negative_outfiles is None:
+            _, negative_outfiles = get_file_names(os.path.join(SCRIPT_DIR, 'negs'))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         relations_num_rows = merge_and_save_examples(positive_outfiles, negative_outfiles, output_dir, patterns, args.dataset)
@@ -316,11 +318,14 @@ def merge_negative_examples_and_save_given_relation(output_dir, entities, file_p
                 continue
             if not seperate_entities(d) or d['sentence_id'] == last_sent_id_used:
                 continue
+            # entities are not sorted in the same way all the time:
+            if i==0: first_entity='e1'; second_entity='e2'
+            elif i==1: first_entity='e2'; second_entity='e1'
             text = wrap_text(d['sentence_text'].split(),
-                             d['e1_first_index'],
-                             d['e1_last_index'] + 1,
-                             d['e2_first_index'],
-                             d['e2_last_index'] + 1)
+                             d[f'{first_entity}_first_index'],
+                             d[f'{first_entity}_last_index'] + 1,
+                             d[f'{second_entity}_first_index'],
+                             d[f'{second_entity}_last_index'] + 1)
             writer.writerow([text, 'NOTA', NEGATIVE_PATTERNS[entities][i], d['sentence_id']])
             last_sent_id_used = d['sentence_id']
             rows_used += 1
@@ -328,7 +333,7 @@ def merge_negative_examples_and_save_given_relation(output_dir, entities, file_p
         search_file.close()
     out_file.close()
     print(f"number of examples skipped because are positive: {len(positive_skipped)}")
-    print(f"length positives: {len(set(positive_sent_ids_used))}") #Why need to set it!?
+    print(f"length positives: {len(set(positive_sent_ids_used))}")
 
     return rows_used_per_pattern
 
