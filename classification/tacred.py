@@ -72,10 +72,7 @@ class TACREDProcessor(REProcessor):
     def _create_search_examples_given_row_ids(self, search_file: str, row_ids: List[int]) -> Iterator[InputExample]:
         with open(search_file, 'r', encoding="utf-8") as f:
             reader = csv.reader(f, delimiter='\t')
-            for i, doc in enumerate(reader):
-                if i in row_ids:
-                    label = self._relation_label(doc[1])
-                    yield TACREDExample(i, doc[0], label)
+        return [TACREDExample(i, doc[0], self._relation_label(doc[1])) for i, doc in enumerate(reader) if i in row_ids]
 
     def _create_generation_examples(self, raw_generations: List[str]) -> Iterator[InputExample]:
         for i, gen in enumerate(raw_generations):

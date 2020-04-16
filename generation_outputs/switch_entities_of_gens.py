@@ -1,4 +1,5 @@
 import argparse
+from itertools import chain
 from random import sample
 import re
 
@@ -14,17 +15,26 @@ def main(args):
         e2s = f.readlines()
         e2s = sample(e2s, len(gens))
 
+    if args.e3_type:
+        with open(f'generation_outputs/{args.e3_type}s.txt', 'r') as f:
+            e3s = f.readlines()
+            e3s = sample(e3s, len(gens)*2) # Just in case
+
     with open(args.gen_file.split('.txt')[0]+'_new_ents.txt', 'w') as f:
         for i, gen in enumerate(gens):
             subbed = re.sub('\[E1\] (.*?) \[\/E1\]', f'[E1] {e1s[i].rstrip()} [/E1]', gen)
             subbed = re.sub('\[E2\] (.*?) \[\/E2\]', f'[E2] {e2s[i].rstrip()} [/E2]', subbed)
+            if args.e3_type:
+                subbed = re.sub('\[E3\] (.*?) \[\/E3\]', sample(e3s, 1)[0].rstrip(), subbed)
             assert subbed != gen
             f.write(subbed)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gen_file", type=str, required=True)
     parser.add_argument("--e1_type", type=str, required=True)
     parser.add_argument("--e2_type", type=str, required=True)
+    parser.add_argument("--e3_type", type=str)
     args = parser.parse_args()
     main(args)

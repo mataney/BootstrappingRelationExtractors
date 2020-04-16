@@ -98,7 +98,7 @@ class REProcessor(DataProcessor):
         examples = self._create_search_examples_given_row_ids(
             os.path.join(data_dir, relation), indices
         )
-        return list(examples)
+        return examples
 
     def get_generation_train_examples(self, data_dir: str) -> List[InputExample]:
         positive_examples = self.sample_generation_examples(
@@ -141,9 +141,10 @@ class REProcessor(DataProcessor):
         examples = []
         for file, curr_num_to_sample, num_of_patterns in zip(pos_and_neg_files, nums_to_sample, nums_of_patterns):
             indices = self._equal_samples_per_pattern(num_of_patterns, curr_num_to_sample)
-            examples += list(self._create_search_examples_given_row_ids(
+            examples += self._create_search_examples_given_row_ids(
                 os.path.join(data_dir, file), indices
-            ))
+            )
+        for e in examples: e.label = 0 #because there's a change I'm sampling from possive examples
         return examples
 
     def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
