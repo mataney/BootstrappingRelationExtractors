@@ -740,7 +740,7 @@ def main():
         config=config,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
-    tokenizer.add_tokens(SPECIAL_TOKENS)
+    tokenizer.add_special_tokens({'additional_special_tokens': SPECIAL_TOKENS})
     model.resize_token_embeddings(len(tokenizer))
 
     if args.local_rank == 0:
@@ -785,7 +785,7 @@ def main():
         # Load a trained model and vocabulary that you have fine-tuned
         model = model_class.from_pretrained(args.output_dir)
         tokenizer = tokenizer_class.from_pretrained(args.output_dir)
-        tokenizer.add_tokens(SPECIAL_TOKENS)
+        tokenizer.add_special_tokens({'additional_special_tokens': SPECIAL_TOKENS})
         model.resize_token_embeddings(len(tokenizer))
         model.to(args.device)
 
@@ -796,7 +796,7 @@ def main():
     splits_to_eval = [s for s, b in zip(splits, bools) if b]
     if len(splits_to_eval) > 0 and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-        tokenizer.add_tokens(SPECIAL_TOKENS)
+        tokenizer.add_special_tokens({'additional_special_tokens': SPECIAL_TOKENS})
         model.resize_token_embeddings(len(tokenizer))
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:

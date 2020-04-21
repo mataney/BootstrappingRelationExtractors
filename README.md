@@ -49,6 +49,10 @@ If All, need to add "per:religion".
 {"task": ["tacred"], "training_method": ["search"], "relation_name": ["per:children", "per:date_of_death", "org:founded_by", "per:spouse", "per:origin", "org:country_of_headquarters", "per:city_of_death"], "num_positive_examples": [100, 500, 1000], "ratio_negative_examples": [10], "seed": [1,2,3]}
 ```
 
+Generation
+```
+{"task": ["tacred"], "training_method": ["generation"], "relation_name": ["per:children"], "num_positive_examples": [100], "ratio_negative_examples": [10], "seed": [1,2,3], "logging_steps": [200]}
+
  #### Explore Errors
 
  You can run `expore_error_types.py` to explore the outputs of your model, just copy the RAW from Oto. Then, you can run the analyzing in the following way:

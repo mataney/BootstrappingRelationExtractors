@@ -217,7 +217,7 @@ class DocREDProcessor(REProcessor):
     def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
         with open(search_file, 'r', encoding="utf-8") as f:
             reader = csv.reader(f, delimiter='\t')
-        return [DocREDSearchExample(i, doc[0], self.reverse_relation_name_adapter(doc[1])) for i, doc in enumerate(reader) if i in row_ids]
+            return [DocREDSearchExample(i, doc[0], self.reverse_relation_name_adapter(doc[1])) for i, doc in enumerate(reader) if i in row_ids]
 
     def relation_name_adapter(self, relation: str):
         return DOCRED_TACRED_RELATIONS_MAPPING[relation]

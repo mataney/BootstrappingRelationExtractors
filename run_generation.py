@@ -215,7 +215,7 @@ def main():
     if requires_preprocessing:
         prepare_input = PREPROCESSING_FUNCTIONS.get(args.model_type)
         prompt_text = prepare_input(args, model, tokenizer, prompt_text)
-    encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=False, return_tensors="pt")
+    encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=True, return_tensors="pt")
     encoded_prompt = encoded_prompt.to(args.device)
 
     samples_splits = args.num_return_sequences//MAX_BATCH * [MAX_BATCH]

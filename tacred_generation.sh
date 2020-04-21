@@ -1,13 +1,14 @@
 num_samples=10
 
-while getopts m:o:s:p: option
+while getopts m:o:s:p:t: option
 do
 case "${option}"
 in
 m) model_dir=${OPTARG};;
 o) out_file=${OPTARG};;
 s) num_samples=${OPTARG};;
-p) prompt=${OPTARG};;
+t) prompt=${OPTARG};;
+p) p=${OPTARG};;
 esac
 done
 
@@ -18,5 +19,5 @@ python run_generation.py \
     --num_return_sequences=$num_samples \
     --prompt="$prompt" \
     --length=50 \
-    --p=0.9 \
+    --p=$p \
     # --k=5 \
