@@ -51,7 +51,7 @@ If All, need to add "per:religion".
 
 Generation
 ```
-{"task": ["tacred"], "training_method": ["generation"], "relation_name": ["per:children"], "num_positive_examples": [100], "ratio_negative_examples": [10], "seed": [1,2,3], "logging_steps": [200]}
+{"task": ["tacred"], "training_method": ["generation"], "relation_name": ["org:founded_by"], "num_positive_examples": [100], "ratio_negative_examples": [10], "seed": [1,2,3], "logging_steps": [100]}
 
  #### Explore Errors
 
