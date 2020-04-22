@@ -1,15 +1,19 @@
 import argparse
 import os
+from tqdm import tqdm
 
-from utils import read_file, write_to_file
-from spike.integration.odin.annotator import OdinAnnotator
+from old.utils import read_file, write_to_file
+from spike.annotators.annotator_service import AnnotatorService
+
+#Will probably need to add spike to the pythonpath
+# and `source activate spike`
 
 def filter_out(sentences, entities):
-    annotator = OdinAnnotator()
+    annotator = AnnotatorService.from_env()
     filtered_sentences = []
-    for sent in sentences:
+    for sent in tqdm(sentences):
         annotated = annotator.annotate_text(sent)
-        featuring_entities = [e.label.lower() for e in annotated.sentences[0].spans['entities']]
+        featuring_entities = [e.label.lower() for e in annotated.sentences[0].entities]
         found_required_entities = True
         for e in entities:
             e = e.lower()

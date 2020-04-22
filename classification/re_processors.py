@@ -94,11 +94,12 @@ class REProcessor(DataProcessor):
             return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
 
         num_of_patterns = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
-        indices = self._equal_samples_per_pattern(num_of_patterns, num_to_sample)
+        indices = self._equal_samples_per_pattern(num_of_patterns,
+                                                  [ceil(num_to_sample / len(num_of_patterns)) for _ in num_of_patterns])
         examples = self._create_search_examples_given_row_ids(
             os.path.join(data_dir, relation), indices
         )
-        return list(examples)
+        return examples
 
     def get_generation_train_examples(self, data_dir: str) -> List[InputExample]:
         positive_examples = self.sample_generation_examples(
@@ -112,7 +113,7 @@ class REProcessor(DataProcessor):
         return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
 
     def sample_generation_examples(self, file_path, num_to_sample):
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding="utf-8") as file:
             gens = file.readlines()
 
         if num_to_sample > len(gens):
@@ -128,11 +129,10 @@ class REProcessor(DataProcessor):
             return lengths[pos_and_neg_files[0]], lengths[pos_and_neg_files[1]]
 
         def distributed_num_to_sample(num_to_sample, nums_of_patterns):
-            pos_found = sum(nums_of_patterns[0].values())
-            neg_found = sum(nums_of_patterns[1].values())
+            all_found = sum(nums_of_patterns[0].values()) + sum(nums_of_patterns[1].values())
 
-            return [int(num_to_sample * pos_found/(pos_found+neg_found)),
-                    int(num_to_sample * neg_found/(pos_found+neg_found))]
+            return [[int(num_to_sample * v/all_found) for v in nums_of_patterns[0].values()],
+                    [int(num_to_sample * v/all_found) for v in nums_of_patterns[1].values()]]
 
 
         nums_of_patterns = count_search_results(os.path.join(data_dir, 'file_lengths.json'))
@@ -141,9 +141,10 @@ class REProcessor(DataProcessor):
         examples = []
         for file, curr_num_to_sample, num_of_patterns in zip(pos_and_neg_files, nums_to_sample, nums_of_patterns):
             indices = self._equal_samples_per_pattern(num_of_patterns, curr_num_to_sample)
-            examples += list(self._create_search_examples_given_row_ids(
+            examples += self._create_search_examples_given_row_ids(
                 os.path.join(data_dir, file), indices
-            ))
+            )
+        for e in examples: e.label = 0 #because there's a chance I'm sampling from positive examples
         return examples
 
     def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
@@ -219,14 +220,13 @@ class REProcessor(DataProcessor):
             return list(json.load(f))
 
     @classmethod
-    def _equal_samples_per_pattern(cls, num_of_patterns, num_to_sample):
+    def _equal_samples_per_pattern(cls, num_of_patterns, nums_to_sample):
         ret = []
-        num_to_sample_per_pattern = ceil(num_to_sample / len(num_of_patterns))
         file_shift = 0
-        for _, pattern_examples in num_of_patterns.items():
-            if num_to_sample_per_pattern > pattern_examples:
-                num_to_sample_per_pattern = pattern_examples
-            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample_per_pattern)
+        for pattern_examples, num_to_sample in zip(num_of_patterns.values(), nums_to_sample):
+            if num_to_sample > pattern_examples:
+                num_to_sample = pattern_examples
+            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample)
             file_shift += pattern_examples
             ret += indices
 

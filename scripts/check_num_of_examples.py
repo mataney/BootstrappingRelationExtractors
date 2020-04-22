@@ -9,8 +9,8 @@ def main(file_dir, write_to):
     for file in os.listdir(file_dir):
         if file.startswith("cached"):
             examples = torch.load(os.path.join(file_dir, file))
-            pos = len([e for e in examples if e.label == 0])
-            neg = len([e for e in examples if e.label == 1])
+            pos = len([e for e in examples if e.label == 1])
+            neg = len([e for e in examples if e.label == 0])
             out[file[7:file.index('_roberta')]] = {"num_pos": pos, "num_neg": neg}
 
     json.dump(out, open(write_to, 'w'))
