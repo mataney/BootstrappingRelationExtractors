@@ -259,8 +259,8 @@ def train(args, train_dataset, model, tokenizer):
                             logs[eval_key] = value
 
                     if args.patience > 0:
-                        if results["f1"] > best_f1:
-                            best_f1 = results["f1"]
+                        if results[args.save_best_wrt_metric] > best_f1:
+                            best_f1 = results[args.save_best_wrt_metric]
                             n_no_improve = 0
                         else:
                             n_no_improve += 1

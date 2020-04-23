@@ -47,7 +47,7 @@ def score(key, prediction, args):
     recall = 0.0
     f1 = 0.0
     # Loop over the data to compute a score
-    for pred in prediction:
+    for i, pred in enumerate(prediction):
         id = pred['title']
         gold_dict = key[id]
         gold = gold_dict['relation']
@@ -59,7 +59,7 @@ def score(key, prediction, args):
             correct_by_relation += 1
         
         if pred_in_label > 0:
-            prec = float(correct_by_relation) / pred_in_label
+            prec = float(correct_by_relation) / (i+1)
         if gold_in_label > 0:
             recall = float(correct_by_relation) / float(gold_in_label)
         if prec + recall > 0.0:
@@ -73,7 +73,8 @@ def score(key, prediction, args):
         "F1": f1,
         "precision": prec,
         "recall": recall,
-        "best_confidence": best_confidence
+        "best_confidence": best_confidence,
+        "best_f1": best_f1,
     }
     json.dump(scores, open(args.output_file, 'w'))
     return prec, recall, f1
