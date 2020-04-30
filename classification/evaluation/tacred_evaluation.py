@@ -38,7 +38,6 @@ def score(key, prediction, args):
     best_f1, best_confidence = 0, (0.5 - 1e-10)
     prediction = sorted(prediction, key=lambda x: x['c'], reverse=True)
 
-
     gold_in_label = sum([1 for k in key if k['relation'] == args.relation_name])
     pred_in_label = len(prediction)
 

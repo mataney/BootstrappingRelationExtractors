@@ -19,26 +19,25 @@ def main(args):
     new_annotation_lines = []
     for i, line in tqdm(enumerate(lines)):
         text, subjects, objects, e3, e4 = find_subject_and_objects(line)
+
+        ents = mark_just_one_entity(subjects, 's', 'x')
+        ents += mark_just_one_entity(objects, 'o', 'x')
+
         e3 = [['x', o] for o in e3]
         e4 = [['y', o] for o in e4]
 
-        subj_id, obj_id = sample(subjects, 1)[0], sample(objects, 1)[0]
-        ents = []
-        for ent in subjects:
-            if ent == subj_id:
-                ents.append(['s', ent])
-            else:
-                ents.append(['x', ent])
-        for ent in objects:
-            if ent == obj_id:
-                ents.append(['o', ent])
-            else:
-                ents.append(['x', ent])
         new_annotation_lines.append(wrap_text(text, ents + e3 + e4))
 
     with open(args.in_file_path.split('.txt')[0]+'_new_wraps.txt', 'w') as outfile:
         for line in new_annotation_lines:
             outfile.write(line)
+
+def mark_just_one_entity(entities, pos_mark, neg_mark):
+    entities = [[pos_mark, ent] for ent in entities]
+    if len(entities) > 1:
+        id_of_real_subj = sample(range(len(entities)), 1)[0]
+        entities = [[pos_mark, ent[1]] if i == id_of_real_subj else [neg_mark, ent[1]] for i, ent in enumerate(entities)]
+    return entities
 
 def find_subject_and_objects(line):
     last_found = None
@@ -47,7 +46,7 @@ def find_subject_and_objects(line):
     while i < len(line):
         if line[i] == '[':
             if line[i+1] in ['s', 'o', 'x', 'y']:
-                last_found = line[i+1] # 's' or 'o'
+                last_found = line[i+1]
                 last_found_index = i
                 line = line[:i] + line[i+3:]
             continue

@@ -241,7 +241,7 @@ def main():
 
         texts = []
         for seq in generated_sequence:
-            text = tokenizer.decode(seq, clean_up_tokenization_spaces=False)
+            text = tokenizer.decode(seq, clean_up_tokenization_spaces=True)
             text = text[: text.find(args.stop_token) if args.stop_token else None]
             text = text[: text.find('\n')]
             texts.append(text)

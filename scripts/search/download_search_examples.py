@@ -14,7 +14,7 @@ from classification.re_config import RELATIONS_ENTITY_TYPES_FOR_SEARCH
 
 SINGLE_TRIGGER_PATTERNS = {
     "per:children": [
-        "{e1:e=PERSON John} 's [t:w=son|daughter|child|children|daughters|sons daughter] , {e2:e=PERSON Tim} .",
+        "{e1:e=PERSON John} 's [t:w=son|daughter|child|children|daughters|sons daughter] , {e2:e=PERSON Tim}, likes swimming .",
         "{e1:e=PERSON Mary} did something to her [t:w=son|daughter|child|children|daughters|sons son], {e2:e=PERSON John} in 1992.",
         "{e1:e=PERSON Mary} was survived by her 4 [t:w=son|daughter|child|children|daughters|sons sons], John, John, {e2:e=PERSON John} and John."
         ],
@@ -34,9 +34,14 @@ SINGLE_TRIGGER_PATTERNS = {
         "{e1:e=ORGANIZATION Microsoft} was [t:w=founded founded] [$ by] {e2:e=PERSON Mary}.",
         ],
     "org:country_of_headquarters": [
-        "John Doe, a professor at the {e1:e=ORGANIZATION Technion} [$ in] {e2:e=LOCATION Israel} likes running.",
-        "{e2:e=LOCATION Israel} [$ '] largest university is {e1:e=ORGANIZATION BIU}.",
-        "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {e2:e=LOCATION England} ."
+        # "{e1:e=ORGANIZATION Technion} operating {in:t=IN in} {e2:e=LOCATION Israel} is the biggest in the country.",
+        "John Doe, a professor at the {e1:e=ORGANIZATION Technion} [in:t=IN in] {e2:e=LOCATION Israel} likes running.",
+        # "{e1:e=ORGANIZATION IMH} is operating {in from} {e2:e=LOCATION Cyprus} .",
+        # "{e1:e=ORGANIZATION IMH} best company in {e2:e=LOCATION Cyprus} .",
+        "{e1:e=ORGANIZATION Technion}, a leading {t:t=/NN/ company} {in:t=IN in} {e2:e=LOCATION Israel}.",
+        # "{e1:e=ORGANIZATION Microsoft} is [t:w=based based] in {e2:e=LOCATION England} .",
+        "{e2:e=LOCATION Israel} [pos:t=POS '] largest university is {e1:e=ORGANIZATION BIU}.",
+        # "{e2:e=LOCATION Israel} [pos:t=POS '] {e1:e=ORGANIZATION BIU} is the largest university in the world.",
         ],
     # "per:country_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
@@ -87,9 +92,14 @@ PATTERNS = {
         "{e1:e=ORGANIZATION Microsoft} was [t:w=craft|crafted|crafts|crafting|create|creates|co-founded|co-found|created|creating|creation|debut|dominated|dominates|dominating|emerge|emerges|emerged|emerging|establish|established|establishing|establishes|establishment|forge|forges|forged|forging|forms|formation|formed|forming|founds|found|founded|founding|launched|launches|launching|opened|opens|opening|organize|organizes|organizing|organized|shapes|shaped|shaping|start|started|starting|starts founded] [$ by] {e2:e=PERSON Mary}.",
         ],
     "org:country_of_headquarters": [
-        "John Doe, a professor at the {e1:e=ORGANIZATION Technion} [$ in] {e2:e=LOCATION Israel} likes running.",
-        "{e2:e=LOCATION Israel} [$ '] largest university is {e1:e=ORGANIZATION BIU}.",
-        "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} ."
+        # "{e1:e=ORGANIZATION Technion} operating {in:t=IN in} {e2:e=LOCATION Israel} is the biggest in the country.",
+        "John Doe, a professor at the {e1:e=ORGANIZATION Technion} [in:t=IN in] {e2:e=LOCATION Israel} likes running.",
+        # "{e1:e=ORGANIZATION IMH} is operating {in from} {e2:e=LOCATION Cyprus} .",
+        # "{e1:e=ORGANIZATION IMH} best company in {e2:e=LOCATION Cyprus} .",
+        "{e1:e=ORGANIZATION Technion}, a leading {t:t=/NN/ company} {in:t=IN in} {e2:e=LOCATION Israel}.",
+        # "{e1:e=ORGANIZATION Microsoft} is [t:w=based|headquarter|headquartered|headquarters|base based] in {e2:e=LOCATION England} .",
+        "{e2:e=LOCATION Israel} [pos:t=POS '] largest university is {e1:e=ORGANIZATION BIU}.",
+        # "{e2:e=LOCATION Israel} [pos:t=POS '] {e1:e=ORGANIZATION BIU} is the largest university in the world.",
         ],
     # "per:country_of_birth": [
     #     "{e1:e=PERSON John} was [t:w=born born] in {e2:e=LOCATION England} in 1997.",
@@ -213,17 +223,18 @@ def entities_validator_for_relation(relation, dataset):
     countries_and_states = read_entities_list(countries=True, states=False)
 
     if dataset == 'tacred' and relation == "org:country_of_headquarters":
-        def country_checker(location):
-            return location in countries
+        pass
+        # def country_checker(location):
+            # return location in countries
 
-        return country_checker
+        # return country_checker
     elif dataset == 'tacred' and relation == "per:city_of_death":
         def city_checker(location):
             return not location in countries_and_states
         
         return city_checker
-    else:
-        return lambda location: True
+
+    return lambda location: True
 
 def read_entities_list(countries, states):
     ret = set()
