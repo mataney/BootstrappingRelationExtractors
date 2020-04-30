@@ -1,5 +1,5 @@
 import csv
-from typing import Any, Callable, Dict, Iterator, List, Type, TypeVar
+from typing import Any, Callable, Dict, Iterator, List, Type, TypeVar, Set
 from typing_extensions import TypedDict
 
 from classification.re_processors import REProcessor, JsonObject, wrap_text, NEGATIVE_LABEL, SetType
@@ -69,7 +69,7 @@ class TACREDProcessor(REProcessor):
             if self._same_entity_types_relation(relation):
                 yield TACREDExample.build(id, relation, label)
 
-    def _create_search_examples_given_row_ids(self, search_file: str, row_ids: List[int]) -> Iterator[InputExample]:
+    def _create_search_examples_given_row_ids(self, search_file: str, row_ids: Set[int]) -> Iterator[InputExample]:
         with open(search_file, 'r', encoding="utf-8") as f:
             reader = csv.reader(f, delimiter='\t')
             return [TACREDExample(i, doc[0], self._relation_label(doc[1])) for i, doc in enumerate(reader) if i in row_ids]

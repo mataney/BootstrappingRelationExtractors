@@ -3,7 +3,7 @@ from collections import defaultdict
 from itertools import permutations
 import logging
 import os
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar, Set
 from typing_extensions import TypedDict
 
 from transformers.data.processors.utils import InputExample, InputFeatures
@@ -18,13 +18,13 @@ T = TypeVar('T', bound='DocREDExample')
 Builder = Callable[[Type[T], int, JsonObject, Relation, str], List[T]]
 
 class DocREDExample(InputExample):
-    def __init__(self, title: int, example_json: JsonObject, relation: Relation, evidence: int, label: str = None) -> None:
-        self.title = title
+    def __init__(self, id: int, text: str, label: str, evidence: int = 0, h: int = -1, t: int = -1) -> None:
+        self.title = id
         self.evidence = evidence
-        self.text = self._mark_entities(example_json, relation)
-        self.h = relation['h']
-        self.t = relation['t']
+        self.text = text
         self.label = label
+        self.h = h
+        self.t = t
 
     def __eq__(self, other: Any):
         if not isinstance(other, DocREDExample):
@@ -43,38 +43,24 @@ class DocREDExample(InputExample):
         return hash((self.title, self.text, self.h, self.t, self.label))
 
     @classmethod
-    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label: str = None) -> List[T]:
+    def build_annotated(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label: str = None) -> List[T]:
         for evidence in DocREDUtils.evidences_with_entities(example_json, relation):
-            yield cls(title, example_json, relation, evidence, label)
+            yield cls(id=title,
+                      text=DocREDUtils.mark_entities(example_json, relation, evidence),
+                      label=label,
+                      evidence=evidence,
+                      h=relation['h'],
+                      t=relation['t'])
 
-    def _mark_entities(self, example_json: JsonObject, relation: Relation) -> str:
-        e1_start_idx, e1_end_idx = self._relation_span(example_json['vertexSet'], relation, 'h')
-        e2_start_idx, e2_end_idx = self._relation_span(example_json['vertexSet'], relation, 't')
-        text = example_json['sents'][self.evidence].copy()
-
-        return wrap_text(text, e1_start_idx, e1_end_idx, e2_start_idx, e2_end_idx)
-
-    def _relation_span(self, entities: List[Entity], relation: Relation, side: str) -> [int, int]:
-        """
-        Marking the first instance of the entity
-        """
-        entity = DocREDUtils.entity_from_entity_id(entities, relation[side], self.evidence)[0] # Assuming one wrapping will be enough
-        return entity['pos'][0], entity['pos'][-1]
-
-class DistantDocREDExample(DocREDExample):
     @classmethod
-    def build(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label: str = None) -> List[T]:
+    def build_distant(cls: Type[T], title: int, example_json: JsonObject, relation: Relation, label: str = None) -> List[T]:
         for evidence in DocREDUtils.sents_entities_share(example_json, relation):
-            yield cls(title, example_json, relation, evidence, label)
-
-class DocREDSearchExample(InputExample):
-    def __init__(self, id: int, text: str, label: str) -> None:
-        self.title = id
-        self.evidence = [0]
-        self.text = text
-        self.label = label
-        self.h = -1
-        self.t = -1
+            yield cls(id=title,
+                      text=DocREDUtils.mark_entities(example_json, relation, evidence),
+                      label=label,
+                      evidence=evidence,
+                      h=relation['h'],
+                      t=relation['t'])
 
 class DocREDUtils:
     @staticmethod
@@ -130,6 +116,22 @@ class DocREDUtils:
                 return True
         return False
 
+    @staticmethod
+    def mark_entities(example_json: JsonObject, relation: Relation, evidence: int) -> str:
+        e1_start_idx, e1_end_idx = DocREDUtils._relation_span(example_json['vertexSet'], relation, 'h', evidence)
+        e2_start_idx, e2_end_idx = DocREDUtils._relation_span(example_json['vertexSet'], relation, 't', evidence)
+        text = example_json['sents'][evidence].copy()
+
+        return wrap_text(text, e1_start_idx, e1_end_idx, e2_start_idx, e2_end_idx)
+
+    @staticmethod
+    def _relation_span(entities: List[Entity], relation: Relation, side: str, evidence: int) -> [int, int]:
+        """
+        Marking the first instance of the entity
+        """
+        entity = DocREDUtils.entity_from_entity_id(entities, relation[side], evidence)[0] # Assuming one wrapping will be enough
+        return entity['pos'][0], entity['pos'][-1]
+
 class DocREDProcessor(REProcessor):
     def __init__(self, relation_name: str, num_positive: int = None, negative_ratio: int = None, type_independent_neg_sample: bool = True) -> None:
         super().__init__(relation_name, num_positive, negative_ratio, type_independent_neg_sample)
@@ -143,12 +145,12 @@ class DocREDProcessor(REProcessor):
     def get_distant_train_examples(self, data_dir: str) -> List[DocREDExample]:
         """Gets a collection of `InputExample`s for the train set."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, self.train_distant_file)),
-                                         "train_distant", builder=DistantDocREDExample.build)
+                                         "train_distant", builder=DocREDExample.build_distant)
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def _create_examples(self, documents: List[JsonObject],
                          set_type: SetType,
-                         builder: Builder = DocREDExample.build) -> Iterator[DocREDExample]:
+                         builder: Builder = DocREDExample.build_annotated) -> Iterator[DocREDExample]:
         """Creates examples for the training and dev sets."""
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
@@ -157,16 +159,12 @@ class DocREDProcessor(REProcessor):
                     for example in examples:
                         yield example
 
-    def _create_search_examples(self, docs: List[str]) -> List[InputExample]:
-        for doc in docs:
-            yield DocREDSearchExample(int(doc[0]), doc[1], doc[2])
-
     def _create_all_possible_dev_examples(self, documents: List[JsonObject], set_type: SetType) -> Iterator[DocREDExample]:
         """Creates examples of all possible entities for dev sets"""
         for title_id, doc in enumerate(documents):
             relations = self._create_all_relation_permutations(doc)
             for relation in relations:
-                examples = DocREDExample.build(title_id, doc, relation, label=self._relation_label(relation))
+                examples = DocREDExample.build_annotated(title_id, doc, relation, label=self._relation_label(relation))
                 for example in examples:
                     yield example
 
@@ -211,13 +209,23 @@ class DocREDProcessor(REProcessor):
     def _positive_relation(self, relation: Relation) -> bool:
         return relation['r'] == self.relation_mapping[self.positive_label]['id']
 
-    def _relation_label(self, relation: Relation) -> str:
-        return self.positive_label if self._positive_relation(relation) else NEGATIVE_LABEL
+    def _positive_relation_name(self, relation_name: str) -> bool:
+        return 1 if relation_name == self.positive_label else 0
 
-    def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
+    def _relation_label(self, relation: Relation) -> str:
+        return 1 if self._positive_relation(relation) else 0
+
+    def _create_search_examples_given_row_ids(self, search_file, row_ids: Set[int]) -> Iterator[InputExample]:
         with open(search_file, 'r', encoding="utf-8") as f:
             reader = csv.reader(f, delimiter='\t')
-            return [DocREDSearchExample(i, doc[0], self.reverse_relation_name_adapter(doc[1])) for i, doc in enumerate(reader) if i in row_ids]
+            return [DocREDExample(id=i,
+                                  text=doc[0],
+                                  label=self._positive_relation_name(self.reverse_relation_name_adapter(doc[1])))
+                    for i, doc in enumerate(reader) if i in set(row_ids)]
+
+    def _create_generation_examples(self, raw_generations: List[str]) -> Iterator[InputExample]:
+        for i, gen in enumerate(raw_generations):
+            yield DocREDExample(i, gen.rstrip(), 1)
 
     def relation_name_adapter(self, relation: str):
         return DOCRED_TACRED_RELATIONS_MAPPING[relation]
