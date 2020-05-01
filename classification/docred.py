@@ -155,8 +155,7 @@ class DocREDProcessor(REProcessor):
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
                 if self._positive_relation(relation) or self.allow_as_negative(relation, doc['vertexSet']):
-                    if len(relation['evidence']) != 1: continue
-                    if self._positive_relation(relation):
+                    if self._positive_relation(relation) and len(relation['evidence']) != 1: continue
                     examples = builder(title_id, doc, relation, label=self._relation_label(relation))
                     for example in examples:
                         yield example
@@ -166,7 +165,6 @@ class DocREDProcessor(REProcessor):
         for title_id, doc in enumerate(documents):
             relations = self._create_all_relation_permutations(doc)
             for relation in relations:
-                if len(relation['evidence']) != 1: continue
                 examples = DocREDExample.build_annotated(title_id, doc, relation, label=relation['r'])
                 for example in examples:
                     yield example
@@ -180,6 +178,8 @@ class DocREDProcessor(REProcessor):
         positive_label_id = self.relation_mapping[self.positive_label]['id']
         for sent_id, entities_in_sent in entities_by_sent_id.items():
             for perm in permutations(entities_in_sent, 2):
+                if self.multi_evidence_positive_relation(relations_by_entities[perm], positive_label_id):
+                    continue
                 label = (
                     1 if DocREDUtils.entities_in_positive_relation_in_this_sent(perm,
                                                                                 positive_label_id,
@@ -192,6 +192,12 @@ class DocREDProcessor(REProcessor):
         for relation in relations_in_all_types:
             if self._same_entity_types_relation(relation, doc['vertexSet']):
                 yield relation
+
+    def multi_evidence_positive_relation(self, relations_for_perm, positive_label_id):
+        pos = [r for r in relations_for_perm if r['r'] == positive_label_id]
+        if len(pos) == 0:
+            return False
+        return len(pos[0]['evidence']) > 1
 
     def allow_as_negative(self, relation: Relation, entities: List[Entity]):
         return self.type_independent_neg_sample or self._same_entity_types_relation(relation, entities)
