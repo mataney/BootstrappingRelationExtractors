@@ -155,6 +155,8 @@ class DocREDProcessor(REProcessor):
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
                 if self._positive_relation(relation) or self.allow_as_negative(relation, doc['vertexSet']):
+                    if len(relation['evidence']) != 1: continue
+                    if self._positive_relation(relation):
                     examples = builder(title_id, doc, relation, label=self._relation_label(relation))
                     for example in examples:
                         yield example
@@ -164,7 +166,8 @@ class DocREDProcessor(REProcessor):
         for title_id, doc in enumerate(documents):
             relations = self._create_all_relation_permutations(doc)
             for relation in relations:
-                examples = DocREDExample.build_annotated(title_id, doc, relation, label=self._relation_label(relation))
+                if len(relation['evidence']) != 1: continue
+                examples = DocREDExample.build_annotated(title_id, doc, relation, label=relation['r'])
                 for example in examples:
                     yield example
 
@@ -172,22 +175,21 @@ class DocREDProcessor(REProcessor):
         entities_by_sent_id = DocREDUtils.entities_by_sent_id(doc['vertexSet'])
         relations_by_entities = DocREDUtils.relations_by_entities(doc['labels'])
 
-        relations = []
+        relations_in_all_types = []
 
         positive_label_id = self.relation_mapping[self.positive_label]['id']
         for sent_id, entities_in_sent in entities_by_sent_id.items():
             for perm in permutations(entities_in_sent, 2):
-                relation_id = (
-                    positive_label_id if DocREDUtils.entities_in_positive_relation_in_this_sent(perm,
-                                                                                                positive_label_id,
-                                                                                                sent_id,
-                                                                                                relations_by_entities)
-                    else NEGATIVE_LABEL
+                label = (
+                    1 if DocREDUtils.entities_in_positive_relation_in_this_sent(perm,
+                                                                                positive_label_id,
+                                                                                sent_id,
+                                                                                relations_by_entities)
+                    else 0
                 )
-                relations.append({'r': relation_id, 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
+                relations_in_all_types.append({'r': label, 'h': perm[0], 't': perm[1], 'evidence': [sent_id]})
 
-
-        for relation in relations:
+        for relation in relations_in_all_types:
             if self._same_entity_types_relation(relation, doc['vertexSet']):
                 yield relation
 

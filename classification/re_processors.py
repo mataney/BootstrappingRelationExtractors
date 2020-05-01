@@ -362,7 +362,6 @@ def simple_accuracy(preds, labels):
     return (preds == labels).mean()
 
 def f1_ignore_negative_class(preds, labels, positive_label):
-    f1 = f1_score(y_true=labels, y_pred=preds)
     p, r, f, _ = precision_recall_fscore_support(y_true=labels,
                                                  y_pred=preds,
                                                  pos_label=positive_label,
@@ -372,7 +371,6 @@ def f1_ignore_negative_class(preds, labels, positive_label):
         "p": p,
         "r": r,
         "f1": f,
-        "f1_do_not_ignore_negative_class": f1,
     }
 
 class Processors:

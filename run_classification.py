@@ -583,7 +583,6 @@ def main():
     parser.add_argument("--do_distant_train", action="store_true", help="Whether to run training on distant supervision data.")
     parser.add_argument("--do_search_train", action="store_true", help="Whether to run training on search supervision data.")
     parser.add_argument("--do_generation_train", action="store_true", help="Whether to run training on generation supervision data.")
-    parser.add_argument("--do_eval_dev", action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--do_full_dev_eval", action="store_true", help="Whether to run eval over all possible relations on train eval split.")
     parser.add_argument("--do_full_test_eval", action="store_true", help="Whether to run eval over all possible relations on dev.")
     parser.add_argument(
@@ -791,8 +790,8 @@ def main():
 
     # Evaluation
     results = {}
-    splits = ['dev_eval', 'full_dev_eval', 'full_test_eval']
-    bools = [args.do_eval_dev, args.do_full_dev_eval, args.do_full_test_eval]
+    splits = ['full_dev_eval', 'full_test_eval']
+    bools = [args.do_full_dev_eval, args.do_full_test_eval]
     splits_to_eval = [s for s, b in zip(splits, bools) if b]
     if len(splits_to_eval) > 0 and args.local_rank in [-1, 0]:
         tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
