@@ -32,8 +32,15 @@ def gen_train_facts(data_file_name, truth_dir):
 
     return fact_in_train
 
+def correct_entity_types(relation_object, entities, relation_name):
+    def get_entity_type(side: str):
+        return entities[relation_object[side]][0]['type']
+
+    return get_entity_type('h') in RELATION_MAPPING[relation_name]['e1_type'] and \
+            get_entity_type('t') in RELATION_MAPPING[relation_name]['e2_type']
+
 def main(args):
-    relation_name = RELATION_MAPPING[args.relation_name]['id']    
+    relation_id = RELATION_MAPPING[args.relation_name]['id']
 
     truth_file = os.path.join(args.gold_dir, args.gold_file)
     truth = json.load(open(truth_file))
@@ -43,25 +50,25 @@ def main(args):
     tot_evidences = 0
     titleset = set([])
 
-    title2vectexSet = {}
 
     for x in truth:
         title = x['title']
         titleset.add(title)
 
         vertexSet = x['vertexSet']
-        title2vectexSet[title] = vertexSet
 
         for label in x['labels']:
             r = label['r']
 
             h_idx = label['h']
             t_idx = label['t']
-            if r == relation_name:
-                std[(title, r, h_idx, t_idx)] = set(label['evidence'])
-                tot_evidences += len(label['evidence'])
-                if DocREDUtils.evidences_with_entities(x, label):
-                    std_in_single_sent[(title, r, h_idx, t_idx)] = set(label['evidence'])
+            if r != relation_id: continue
+            if not correct_entity_types(label, vertexSet, args.relation_name): continue
+
+            std[(title, r, h_idx, t_idx)] = set(label['evidence'])
+            tot_evidences += len(label['evidence'])
+            if len(label['evidence']) == 1 and len(DocREDUtils.evidences_with_entities(x, label)) > 0:
+                std_in_single_sent[(title, r, h_idx, t_idx)] = set(label['evidence'])
 
     submission_answer_file = args.pred_file
     tmp = json.load(open(submission_answer_file))
@@ -87,34 +94,26 @@ def main(args):
             submission_answer.append(tmp[i])
 
     submission_answer = sorted(submission_answer, key=lambda x: x['c'], reverse=True)
-    
+
     if len(set([answer['r'] for answer in submission_answer])) != 1:
-        raise ValueError('Mutliple relatoin predictions are passed')
+        raise ValueError('Mutliple relation predictions are passed')
         # This is a must as we are only adding a the "relation_name" to the std dict
 
-    scores = eval(args, submission_answer, title2vectexSet, std_in_single_sent)
-    multi_sent_rel_scores = eval(args, submission_answer, title2vectexSet, std)
+    scores = eval(args, submission_answer, std_in_single_sent)
+    # multi_sent_rel_scores = eval(args, submission_answer, std)
 
-    for k, v in multi_sent_rel_scores.items():
-        scores[f"multi_sent_{k}"] = v
+    # for k, v in multi_sent_rel_scores.items():
+    #     scores[f"multi_sent_{k}"] = v
 
     if args.output_file:
         json.dump(scores, open(args.output_file, 'w'))
 
     return scores
 
-def eval(args, submission_answer, title2vectexSet, std):
-    if args.ignore_train:
-        fact_in_train_annotated = gen_train_facts("train_annotated.json", args.gold_dir)
-        fact_in_train_distant = gen_train_facts("train_distant.json", args.gold_dir)
-
+def eval(args, submission_answer, std):
     correct_re = 0
     tot_relations = len(std)
 
-    correct_in_train_annotated = 0
-    correct_in_train_distant = 0
-    titleset2 = set([])
-    re_f1_ignore_train_annotated, re_f1_ignore_train = 0, 0
     re_f1, re_p, re_r, best_f1, best_p, best_r, best_confidence = 0, 0, 0, 0, 0, 0, (0.5 - 1e-10)
     for i, x in enumerate(submission_answer):
         title = x['title']
@@ -124,26 +123,9 @@ def eval(args, submission_answer, title2vectexSet, std):
         confidence = x['c']
         if confidence < args.confidence_threshold:
             break
-        titleset2.add(title)
-        if title not in title2vectexSet:
-            continue
-        vertexSet = title2vectexSet[title]
 
         if (title, r, h_idx, t_idx) in std:
             correct_re += 1
-            in_train_annotated = in_train_distant = False
-            if args.ignore_train:
-                for n1 in vertexSet[h_idx]:
-                    for n2 in vertexSet[t_idx]:
-                        if (n1['name'], n2['name'], r) in fact_in_train_annotated:
-                            in_train_annotated = True
-                        if (n1['name'], n2['name'], r) in fact_in_train_distant:
-                            in_train_distant = True
-
-                if in_train_annotated:
-                    correct_in_train_annotated += 1
-                if in_train_distant:
-                    correct_in_train_distant += 1
 
         re_p = 1.0 * correct_re / (i+1)
         re_r = 1.0 * correct_re / tot_relations
@@ -159,24 +141,6 @@ def eval(args, submission_answer, title2vectexSet, std):
             best_r = re_r
             best_confidence = confidence
 
-        if args.ignore_train:
-            re_p_ignore_train_annotated = 1.0 * (correct_re-correct_in_train_annotated) / (len(submission_answer)-correct_in_train_annotated)
-            re_p_ignore_train = 1.0 * (correct_re-correct_in_train_distant) / (len(submission_answer)-correct_in_train_distant)
-
-            if re_p_ignore_train_annotated+re_r == 0:
-                re_f1_ignore_train_annotated = 0
-            else:
-                re_f1_ignore_train_annotated = 2.0 * re_p_ignore_train_annotated * re_r / (re_p_ignore_train_annotated + re_r)
-
-            if re_p_ignore_train+re_r == 0:
-                re_f1_ignore_train = 0
-            else:
-                re_f1_ignore_train = 2.0 * re_p_ignore_train * re_r / (re_p_ignore_train + re_r)
-
-    if args.ignore_train:
-        print ('RE_ignore_annotated_F1:', re_f1_ignore_train_annotated)
-        print ('RE_ignore_distant_F1:', re_f1_ignore_train)
-
     scores = {
         "F1": re_f1,
         "precision": re_p,
@@ -186,7 +150,7 @@ def eval(args, submission_answer, title2vectexSet, std):
         "best_recall": best_r,
         "best_confidence": best_confidence
     }
-    
+
     return scores
 
 if __name__ == "__main__":
@@ -209,9 +173,6 @@ if __name__ == "__main__":
     parser.add_argument('-confidence_threshold', '--confidence_threshold',
         type=float,
         default=0)
-    parser.add_argument('-ignore_train', '--ignore_train',
-        action="store_true",
-        help="in the original script they also report F1 if you exclude pairs that were in the training sets")
     args = parser.parse_args()
 
     main(args)

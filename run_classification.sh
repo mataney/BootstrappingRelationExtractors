@@ -61,7 +61,6 @@ python run_classification.py \
   --task_name $task \
   --output_dir $output_dir \
   "$do_train_type" \
-  --do_eval_dev \
   --do_full_dev_eval \
   --do_full_test_eval \
   --evaluate_during_training \

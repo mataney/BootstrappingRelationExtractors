@@ -3,7 +3,7 @@ import logging
 from math import ceil
 import os
 from random import shuffle
-from typing import Any, Callable, Dict, Iterator, List
+from typing import Any, Callable, Dict, Iterator, List, Set
 from typing_extensions import Literal
 from random import sample
 
@@ -97,13 +97,13 @@ class REProcessor(DataProcessor):
         indices = self._equal_samples_per_pattern(num_of_patterns,
                                                   [ceil(num_to_sample / len(num_of_patterns)) for _ in num_of_patterns])
         examples = self._create_search_examples_given_row_ids(
-            os.path.join(data_dir, relation), indices
+            os.path.join(data_dir, relation), set(indices)
         )
         return examples
 
     def get_generation_train_examples(self, data_dir: str) -> List[InputExample]:
         positive_examples = self.sample_generation_examples(
-            os.path.join('data/classification_using_generation', self.positive_label+'.txt'),
+            os.path.join('data/classification_using_generation', self.relation_name_adapter(self.positive_label)+'.txt'),
             self.num_positive)
 
         negative_examples = self.sample_search_examples_for_generation(
@@ -122,7 +122,8 @@ class REProcessor(DataProcessor):
         return list(self._create_generation_examples(gens))
 
     def sample_search_examples_for_generation(self, data_dir, num_to_sample, relation):
-        pos_and_neg_files = [relation, self.relations_entity_types_for_search(relation)]
+        pos_and_neg_files = [self.relation_name_adapter(relation),
+                             self.relations_entity_types_for_search(relation)]
 
         def count_search_results(file: str):
             lengths = json.load(open(file, 'r', encoding="utf-8"))
@@ -147,7 +148,7 @@ class REProcessor(DataProcessor):
         for e in examples: e.label = 0 #because there's a chance I'm sampling from positive examples
         return examples
 
-    def _create_search_examples_given_row_ids(self, search_file, row_ids: List[int]) -> Iterator[InputExample]:
+    def _create_search_examples_given_row_ids(self, search_file, row_ids: Set[int]) -> Iterator[InputExample]:
         raise NotImplementedError
 
     def _create_generation_examples(self, raw_generations: List[str]) -> Iterator[InputExample]:
@@ -200,9 +201,6 @@ class REProcessor(DataProcessor):
     def _create_examples(self, documents: List[JsonObject],
                          set_type: Any,
                          builder: Builder = None) -> Iterator[InputExample]:
-        raise NotImplementedError
-
-    def _create_search_examples(self, documents: List[str]) -> List[InputExample]:
         raise NotImplementedError
 
     def _create_all_possible_dev_examples(self,
@@ -364,7 +362,6 @@ def simple_accuracy(preds, labels):
     return (preds == labels).mean()
 
 def f1_ignore_negative_class(preds, labels, positive_label):
-    f1 = f1_score(y_true=labels, y_pred=preds)
     p, r, f, _ = precision_recall_fscore_support(y_true=labels,
                                                  y_pred=preds,
                                                  pos_label=positive_label,
@@ -374,7 +371,6 @@ def f1_ignore_negative_class(preds, labels, positive_label):
         "p": p,
         "r": r,
         "f1": f,
-        "f1_do_not_ignore_negative_class": f1,
     }
 
 class Processors:
