@@ -31,6 +31,9 @@ then
 elif [[ $training_method = "search" ]]
 then
   do_train_type='--do_search_train'
+elif [[ $training_method = "search_from_generation" ]]
+then
+  do_train_type='--do_search_from_generation'
 elif [[ $training_method = "generation" ]]
 then
   do_train_type='--do_generation_train'

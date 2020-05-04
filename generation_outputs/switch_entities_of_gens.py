@@ -7,6 +7,7 @@ from tqdm import tqdm
 PERSONAL_PRONOUNS_TO_KEEP = ['he', 'she']
 POSSESIVE_PRONOUNS_TO_KEEP = ['his', 'her']
 ENTITY_TYPES = {
+         'country_of_headquarters': ['organization', 'country', 'organization', 'country'],
          'children': ['person', 'person', 'person', None],
          'city_of_death': ['person', 'city', 'city', None],
          'date_of_death': ['person', 'date', 'person', None],

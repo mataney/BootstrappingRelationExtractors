@@ -21,7 +21,7 @@ def main(args):
         text, subjects, objects, e3, e4 = find_subject_and_objects(line)
 
         ents = mark_just_one_entity(subjects, 's', 'x')
-        ents += mark_just_one_entity(objects, 'o', 'x')
+        ents += mark_just_one_entity(objects, 'o', 'y')
 
         e3 = [['x', o] for o in e3]
         e4 = [['y', o] for o in e4]

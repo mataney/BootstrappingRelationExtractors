@@ -145,7 +145,7 @@ NEGATIVE_PATTERNS = {
 
 
 LIMIT = -1
-URL = 'http://35.246.185.209:5000'
+URL = 'http://34.89.233.227:5000'
 SCRIPT_DIR = 'scripts/search'
 
 def main(args):
