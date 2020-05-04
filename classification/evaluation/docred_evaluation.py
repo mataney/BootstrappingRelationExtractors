@@ -100,10 +100,10 @@ def main(args):
         # This is a must as we are only adding a the "relation_name" to the std dict
 
     scores = eval(args, submission_answer, std_in_single_sent)
-    multi_sent_rel_scores = eval(args, submission_answer, std)
+    # multi_sent_rel_scores = eval(args, submission_answer, std)
 
-    for k, v in multi_sent_rel_scores.items():
-        scores[f"multi_sent_{k}"] = v
+    # for k, v in multi_sent_rel_scores.items():
+    #     scores[f"multi_sent_{k}"] = v
 
     if args.output_file:
         json.dump(scores, open(args.output_file, 'w'))
