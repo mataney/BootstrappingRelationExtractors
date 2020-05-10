@@ -64,7 +64,7 @@ def score(key, prediction, args):
         if prec + recall > 0.0:
             f1 = 2.0 * prec * recall / (prec + recall)
 
-        if f1 > best_f1:
+        if f1 >= best_f1:
             best_f1 = f1
             best_confidence = pred['c']
     

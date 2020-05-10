@@ -21,7 +21,7 @@ class DocREDExample(InputExample):
     def __init__(self, id: int, text: str, label: str, evidence: int = 0, h: int = -1, t: int = -1) -> None:
         self.title = id
         self.evidence = evidence
-        self.text = text
+        self.text = text.replace(u'\u2013', '-')
         self.label = label
         self.h = h
         self.t = t
@@ -155,7 +155,7 @@ class DocREDProcessor(REProcessor):
         for title_id, doc in enumerate(documents):
             for relation in doc['labels']:
                 if self._positive_relation(relation) or self.allow_as_negative(relation, doc['vertexSet']):
-                    if self._positive_relation(relation) and len(relation['evidence']) != 1: continue
+                    if self._positive_relation(relation) and len(relation['evidence']) > 1: continue
                     examples = builder(title_id, doc, relation, label=self._relation_label(relation))
                     for example in examples:
                         yield example

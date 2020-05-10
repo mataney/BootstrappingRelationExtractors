@@ -17,7 +17,7 @@ class ExploreDocRED:
 
             evidence = list(set(head_appears_in) & set(tail_appears_in))
             if len(evidence) == 0:
-                print("No overlapping sents between entities")
+                # print("No overlapping sents between entities")
                 continue
             if len(evidence) > 1:
                 print("can't be sure of the correct sentence: ", end='')
@@ -83,6 +83,7 @@ class ExploreDocRED:
     # Method taken from evlaute.py
     @staticmethod
     def remove_duplicates(preds):
+        preds.sort(key = lambda x : (x['title'], x['h_idx'], ['h_idx']))
         without_duplicates = [preds[0]]
         for i in range(1, len(preds)):
             x = preds[i]
@@ -98,6 +99,7 @@ class ExploreDocRED:
         for doc in gold:
             for label in doc['labels']:
                 if label['r'] == relevant_relation:
+                    if len(label['evidence']) > 1: continue
                     title = doc['title']
                     key = (title, label['h'], label['t'])
                     relevant_golds[key] = {'vertexSet': doc['vertexSet'], 'title': doc['title'], 'sents': doc['sents'], 'label': label}
@@ -192,6 +194,7 @@ class ExploreTACRED:
     # Method taken from evlaute.py
     @staticmethod
     def remove_duplicates(preds):
+        # TODO, need to sort these like in the corresponding DocRED's
         without_duplicates = [preds[0]]
         for i in range(1, len(preds)):
             x = preds[i]

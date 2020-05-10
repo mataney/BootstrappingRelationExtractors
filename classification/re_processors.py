@@ -49,6 +49,7 @@ class REProcessor(DataProcessor):
         self.type_independent_neg_sample = type_independent_neg_sample
         self.train_file, self.dev_file, self.test_file = None, None, None
         self.relation_mapping = None
+        self.min_examples_per_relation = 20
 
     def get_examples_by_set_type(self, set_type: SetType, data_dir: str) -> List[InputExample]:
         if set_type == "train":
@@ -76,33 +77,36 @@ class REProcessor(DataProcessor):
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def get_search_train_examples(self, data_dir: str) -> List[InputExample]:
-        return self.create_search_examples(data_dir, self.num_positive, self.negative_ratio)
+        search_folder = 'search/single_trigger_search'
+        return self.create_search_examples(data_dir, search_folder, self.num_positive, self.negative_ratio)
 
     def get_search_from_generation_train_examples(self, data_dir: str) -> List[InputExample]:
-        return self.create_search_examples(data_dir, self.num_positive, self.negative_ratio, same_num_samples_per_pattern=False)
+        search_from_gen_folder = 'search/search_from_generation'
+        search_from_gen_examples = self.create_search_examples(data_dir, search_from_gen_folder, self.num_positive, self.negative_ratio)
+        search_folder = 'search/single_trigger_search'
+        search_examples = self.create_search_examples(data_dir, search_folder, self.num_positive, self.negative_ratio)
+
+        return sample(search_from_gen_examples + search_examples, len(search_from_gen_examples + search_examples))
 
     def create_search_examples(self,
                                data_dir: str,
+                               search_folder: str,
                                num_positive: int = None,
-                               negative_ratio: int = None,
-                               same_num_samples_per_pattern=True) -> List[InputExample]:
-        search_folder = 'search/search_from_generation'
+                               negative_ratio: int = None) -> List[InputExample]:
         positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         num_positive,
-                                                        self.relation_name_adapter(self.positive_label),
-                                                        same_num_samples_per_pattern)
+                                                        self.relation_name_adapter(self.positive_label))
         negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         len(positive_examples) * negative_ratio,
-                                                        self.relations_entity_types_for_search(self.positive_label),
-                                                        same_num_samples_per_pattern)
+                                                        self.relations_entity_types_for_search(self.positive_label))
         return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
 
-    def sample_search_examples(self, data_dir, num_to_sample, relation, same_num_samples_per_pattern):
+    def sample_search_examples(self, data_dir, num_to_sample, relation):
         def count_search_results(file: str, relation_name: str):
             return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
 
         num_of_patterns = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
-        indices = self._sample_indices(num_of_patterns, num_to_sample, same_num_samples_per_pattern)
+        indices = self._sample_indices(num_of_patterns, num_to_sample)
         examples = self._create_search_examples_given_row_ids(
             os.path.join(data_dir, relation), set(indices)
         )
@@ -110,7 +114,7 @@ class REProcessor(DataProcessor):
 
     def get_generation_train_examples(self, data_dir: str) -> List[InputExample]:
         positive_examples = self.sample_generation_examples(
-            os.path.join('data/classification_using_generation', self.relation_name_adapter(self.positive_label)+'.txt'),
+            os.path.join(data_dir, 'classification_using_generation', self.relation_name_adapter(self.positive_label)+'.txt'),
             self.num_positive)
 
         negative_examples = self.sample_search_examples_for_generation(
@@ -224,12 +228,9 @@ class REProcessor(DataProcessor):
         with open(input_file, "r", encoding="utf-8") as f:
             return list(json.load(f))
 
-    @classmethod
-    def _sample_indices(cls, num_of_patterns, num_to_sample, same_num_samples_per_pattern):
-        if same_num_samples_per_pattern:
-            return cls._equal_samples_per_pattern(num_of_patterns, [ceil(num_to_sample / len(num_of_patterns)) for _ in num_of_patterns])
-        else:
-            return sample(range(sum(num_of_patterns.values())), num_to_sample)
+    def _sample_indices(self, num_of_patterns, num_to_sample):
+        samples_per_pattern = [max(self.min_examples_per_relation, ceil(num_to_sample / len(num_of_patterns))) for _ in num_of_patterns]
+        return self._equal_samples_per_pattern(num_of_patterns, samples_per_pattern)
 
     @classmethod
     def _equal_samples_per_pattern(cls, num_of_patterns, nums_to_sample):

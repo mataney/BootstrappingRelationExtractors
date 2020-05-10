@@ -8,14 +8,17 @@ PERSONAL_PRONOUNS_TO_KEEP = ['he', 'she']
 POSSESIVE_PRONOUNS_TO_KEEP = ['his', 'her']
 ENTITY_TYPES = {
          'country_of_headquarters': ['organization', 'country', 'organization', 'country'],
-         'children': ['person', 'person', 'person', None],
+         'children': ['person', 'person', 'person', 'person'],
          'city_of_death': ['person', 'city', 'city', None],
          'date_of_death': ['person', 'date', 'person', None],
          'founded_by': ['organization', 'person', 'person', 'organization'],
          'origin-country': ['person', 'country', 'person', 'country'],
          'origin-nationality': ['person', 'nationality', 'person', 'nationality'],
+         'docred-origin-country': ['organization', 'country', 'organization', 'country'],
+         'docred-origin-nationality': ['organization', 'nationality', 'organization', 'nationality'],
          'religion': ['person', 'religion', 'person', 'religion'],
-         'spouse': ['person', 'person', 'person', None],
+         'docred-religion': ['organization', 'religion', 'organization', 'religion'],
+         'spouse': ['person', 'person', 'person', 'person'],
         }
 
 def main(args):
@@ -44,10 +47,15 @@ def main(args):
             # E3 - PERSON/ORGANIZATION
             if entity_types[2]:
                 for e in re.findall('\[E3\] (.*?) \[\/E3\]', subbed):
-                    subbed = re.sub(f'\[E3\] {e} \[\/E3\]', sample(e3s, 1)[0], subbed)
+                    if e in PERSONAL_PRONOUNS_TO_KEEP+POSSESIVE_PRONOUNS_TO_KEEP:
+                        subbed = re.sub(f'\[E3\] {e} \[\/E3\]', e, subbed)
+                    else:
+                        subbed = re.sub(f'\[E3\] {e} \[\/E3\]', sample(e3s, 1)[0], subbed)
             # E4
             if entity_types[3]:
                 for e in re.findall('\[E4\] (.*?) \[\/E4\]', subbed):
+                    if e in PERSONAL_PRONOUNS_TO_KEEP+POSSESIVE_PRONOUNS_TO_KEEP:
+                        subbed = re.sub(f'\[E4\] {e} \[\/E4\]', e, subbed)
                     if entity_types[3] == 'religion':
                         subbed = switch_religions(4, subbed, e4s, keep_markers=False)
                     else:
@@ -115,7 +123,7 @@ def religions():
     religions = {
         'religion': ["Atheism", "Scientology", "Islam", "Christianity"],
         'religious_relation': ["Evangelical", "Islamic", "Christian", "Jewish", "Catholic"],
-        'religious_affiliation': ["Methodist", "Separatist", "Jew", "Christian", "Sunni", "Secular", "Fundamentalist", "Christianist", "Anglican", "Orthodox", "Conservative", "Islamist", "Muslim"],
+        'religious_affiliation': ["Methodist", "Separatist", "Jew", "Christian", "Sunni", "Secular", "Fundamentalist", "Christianist", "Anglican", "Orthodox", "Islamist", "Muslim"],
     }
     religions['religious_affiliation_plural'] = [f"{x}s" for x in religions['religious_affiliation']]
 

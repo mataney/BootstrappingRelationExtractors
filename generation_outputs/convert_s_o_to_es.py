@@ -18,6 +18,8 @@ def main(args):
 
     new_annotation_lines = []
     for i, line in tqdm(enumerate(lines)):
+        assert line.count('[s') > 0 and line.count('[o') > 0, f"problem in line {i+1}"
+
         text, subjects, objects, e3, e4 = find_subject_and_objects(line)
 
         ents = mark_just_one_entity(subjects, 's', 'x')

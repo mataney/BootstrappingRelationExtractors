@@ -752,7 +752,7 @@ def main():
 
     # Training
     splits = ['train', 'distant', 'search', 'search_from_generation','generation']
-    bools = [args.do_train, args.do_distant_train, args.do_search_train, args.search_from_generation, args.do_generation_train]
+    bools = [args.do_train, args.do_distant_train, args.do_search_train, args.do_search_from_generation_train, args.do_generation_train]
     splits_to_train = [s for s, b in zip(splits, bools) if b]
     if len(splits_to_train) > 0:
         assert len(splits_to_train) == 1
