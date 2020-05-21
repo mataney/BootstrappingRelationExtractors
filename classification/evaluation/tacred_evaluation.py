@@ -10,6 +10,7 @@ import sys
 from collections import Counter
 
 NO_RELATION = "no_relation"
+PRONOUNS = ["he", "she", "it", "me", "us", "you", "her", "him", "it", "them", "my", "our", "your", "her", "his", "their"]
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Score a prediction file using the gold labels.')
@@ -31,14 +32,24 @@ def parse_arguments():
                         default=0.5 - 1e-10,
                         type=float,
                         required=False)
+    parser.add_argument('-remove_pronouns', '--remove_pronouns',
+                        action='store_true')
     args = parser.parse_args()
     return args
+
+def has_pronouns(gold_dict):
+    subj = gold_dict['token'][gold_dict['subj_start']:gold_dict['subj_end']+1]
+    obj = gold_dict['token'][gold_dict['obj_start']:gold_dict['obj_end']+1]
+    return (len(subj) == 1 and subj[0].lower() in PRONOUNS) or (len(obj) == 1 and obj[0].lower() in PRONOUNS)
 
 def score(key, prediction, args):
     best_f1, best_confidence = 0, (0.5 - 1e-10)
     prediction = sorted(prediction, key=lambda x: x['c'], reverse=True)
-
-    gold_in_label = sum([1 for k in key if k['relation'] == args.relation_name])
+    if args.remove_pronouns:
+        prediction = [p for p in prediction if not has_pronouns(key[p['title']])]
+        gold_in_label = sum([1 for k in key if k['relation'] == args.relation_name and not has_pronouns(k)])
+    else:
+        gold_in_label = sum([1 for k in key if k['relation'] == args.relation_name])
     pred_in_label = len(prediction)
 
     correct_by_relation = 0

@@ -111,7 +111,14 @@ def pattern_to_add(dataset, relation, explain):
                                        {'source': 2, 'target': 4, 'label': 'ccomp'},
                                        {'source': 4, 'target': 3, 'label': 'nsubj'}])},
             {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'compound'},
-                                       {'source': 2, 'target': 1, 'label': 'nsubj'}])}
+                                       {'source': 2, 'target': 1, 'label': 'nsubj'}])},
+            {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'nsubj'},
+                                       {'source': 1, 'target': 2, 'label': 'dobj'},
+                                       {'source': 2, 'target': 4, 'label': 'nmod'},
+                                       {'source': 4, 'target': 3, 'label': 'compound'}])},
+            {'roots': [0], 'edges': s([{'source': 0, 'target': 1, 'label': 'nmod'},
+                                       {'source': 2, 'target': 0, 'label': 'nsubj'},
+                                       {'source': 2, 'target': 3, 'label': 'nmod'}])}
         ]:
             return False
     if relation == 'per:spouse':
@@ -122,7 +129,16 @@ def pattern_to_add(dataset, relation, explain):
             {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'nsubj'},
                                        {'source': 1, 'target': 2, 'label': 'nmod'},
                                        {'source': 2, 'target': 3, 'label': 'nmod'},
-                                       {'source': 3, 'target': 4, 'label': 'appos'}])}
+                                       {'source': 3, 'target': 4, 'label': 'appos'}])},
+            {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'nmod'},
+                                       {'source': 1, 'target': 2, 'label': 'appos'}])},
+            {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'nsubj'},
+                                       {'source': 1, 'target': 3, 'label': 'dobj'},
+                                       {'source': 3, 'target': 2, 'label': 'nmod'}])},
+            {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'nsubj'},
+                                       {'source': 1, 'target': 3, 'label': 'conj'},
+                                       {'source': 3, 'target': 2, 'label': 'nsubjpass'}])}
+
         ]:
             return False
     if relation == 'per:religion':
@@ -143,7 +159,9 @@ def pattern_to_add(dataset, relation, explain):
             {'roots': [0], 'edges': s([{'source': 0, 'target': 2, 'label': 'conj'},
                                        {'source': 0, 'target': 3, 'label': 'appos'},
                                        {'source': 2, 'target': 1, 'label': 'amod'}])},
-            {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'compound'}])}]:
+            {'roots': [0], 'edges': s([{'source': 1, 'target': 0, 'label': 'compound'}])},
+            {'roots': [0], 'edges': [{'source': 0, 'target': 1, 'label': 'appos'}]}
+            ]:
             return False
     if relation == 'org:country_of_headquarters':
         if explain in [

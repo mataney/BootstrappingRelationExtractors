@@ -13,14 +13,13 @@ def pos_logging_steps_ratio(training_method, pos):
     return ret
 
 def get_ratio_negative(training_method, relation):
-    # ratio_negative_examples = {"per:children": 47, "org:founded_by": 22, "org:country_of_headquarters": 4, "per:religion": 2, "per:spouse": 29, "per:origin": 5, "per:date_of_death": 8, "per:city_of_death": 5, "child": 85, "date_of_death": 12, "founded_by": 247, "religion": 470, "spouse": 78, "country_of_origin": 57, "headquarters_location": 71, "place_of_death": 85}
+    ratio_negative_examples = {"per:children": 47, "org:founded_by": 22, "org:country_of_headquarters": 4, "per:religion": 2, "per:spouse": 29, "per:origin": 5, "per:date_of_death": 8, "per:city_of_death": 5, "child": 85, "date_of_death": 12, "founded_by": 247, "religion": 470, "spouse": 78, "country_of_origin": 57, "headquarters_location": 71, "place_of_death": 85}
 
-    # if training_method == "search":
-        # return 10
+    return ratio_negative_examples[relation]
     return 10
 
 def get_num_positives(training_method, relation):
-    num_positive_examples = {"annotated": [5, 10, 20, 50, 100], "search": [100, 500, 1000], "distant": [100, 500, 1000], "generation": [100], "search_from_generation": [100]}
+    num_positive_examples = {"train": [5, 10, 20, 50, 100], "search": [100, 500, 1000], "distant": [100, 500, 1000], "generation": [100], "search_from_generation": [100]}
     #max isn't necessarily correct
     max_train_examples = {
         # tacred
@@ -30,7 +29,7 @@ def get_num_positives(training_method, relation):
         }
 
     default = num_positive_examples[training_method]
-    if training_method == "annotated":
+    if training_method == "train":
         if max_train_examples[relation] > default[-1]:
             return default + [max_train_examples[relation]]
     return default
@@ -43,11 +42,12 @@ ALL_RELATION_NAMES = {"tacred": ["per:children", "org:founded_by", "org:country_
                                  "country_of_origin", "headquarters_location", "place_of_death"]}
 
 def main(args):
+    relation_names = args.relation_names
     all_params = []
     for task in args.tasks:
         if args.relation_names == ['all']:
-            args.relation_names = ALL_RELATION_NAMES[task]
-        for relation in args.relation_names:
+            relation_names = ALL_RELATION_NAMES[task]
+        for relation in relation_names:
             assert relation in ALL_RELATION_NAMES[task]
             for training_method in args.training_methods:
                 for num_positive in get_num_positives(training_method, relation):
@@ -70,7 +70,7 @@ if __name__ == "__main__":
                         nargs='+',
                         type=str,
                         required=True,
-                        choices=['annotated', 'distant', 'search', 'generation', 'search_from_generation'])
+                        choices=['train', 'distant', 'search', 'generation', 'search_from_generation'])
     parser.add_argument('--relation_names',
                         nargs='+',
                         type=str,

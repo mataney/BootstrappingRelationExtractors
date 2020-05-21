@@ -68,6 +68,16 @@ class REProcessor(DataProcessor):
             return self.get_all_possible_eval_examples(data_dir, 'full_dev_eval')
         elif set_type == "full_test_eval":
             return self.get_all_possible_eval_examples(data_dir, 'full_test_eval')
+        elif set_type == "search_negs_from_tacred":
+            return self.create_search_negs_from_tacred_examples(data_dir,
+                                                                'search/single_trigger_search',
+                                                                self.num_positive,
+                                                                self.negative_ratio)
+        elif set_type == "train_negs_from_search":
+            return self.create_train_negs_from_searcg_examples(data_dir,
+                                                               'search/single_trigger_search',
+                                                               self.num_positive,
+                                                               self.negative_ratio)
         else:
             raise Exception("Wrong set_type name")
 
@@ -96,6 +106,32 @@ class REProcessor(DataProcessor):
         positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         num_positive,
                                                         self.relation_name_adapter(self.positive_label))
+        negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
+                                                        len(positive_examples) * negative_ratio,
+                                                        self.relations_entity_types_for_search(self.positive_label))
+        return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
+
+    def create_search_negs_from_tacred_examples(self,
+                                                data_dir: str,
+                                                search_folder: str,
+                                                num_positive: int = None,
+                                                negative_ratio: int = None) -> List[InputExample]:
+        positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
+                                                        num_positive,
+                                                        self.relation_name_adapter(self.positive_label))
+        examples_from_tacred = self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train")
+        shuffle(examples_from_tacred)
+        negative_examples = self.get_first_num_examples(examples_from_tacred, 0, len(positive_examples) * negative_ratio)
+        return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
+
+    def create_train_negs_from_searcg_examples(self,
+                                               data_dir: str,
+                                               search_folder: str,
+                                               num_positive: int = None,
+                                               negative_ratio: int = None) -> List[InputExample]:
+        examples_from_tacred = self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train")
+        shuffle(examples_from_tacred)
+        positive_examples = self.get_first_num_examples(examples_from_tacred, 1, num_positive)
         negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         len(positive_examples) * negative_ratio,
                                                         self.relations_entity_types_for_search(self.positive_label))
@@ -188,21 +224,23 @@ class REProcessor(DataProcessor):
             raise Exception("Wrong set_type name")
         return list(examples)
 
+    @classmethod
+    def get_first_num_examples(cls, examples, label, max_num):
+        examples_in_label = [e for e in examples if e.label == label]
+        if max_num is None:
+            return examples_in_label
+        return examples_in_label[:max_num]
+
     def sample_examples(self, examples: List[JsonObject],
                         num_positive: int = None,
                         negative_ratio: int = None,
                         eval: bool = False) -> List[InputExample]:
-        def get_first_num_examples(label, max_num):
-            examples_in_label = [e for e in examples if e.label == label]
-            if max_num is None:
-                return examples_in_label
-            return examples_in_label[:max_num]
 
         examples = list(examples)
         if not eval:
             shuffle(examples)
-        positive_examples = get_first_num_examples(1, num_positive)
-        negative_examples = get_first_num_examples(0, len(positive_examples) * negative_ratio)
+        positive_examples = self.get_first_num_examples(examples, 1, num_positive)
+        negative_examples = self.get_first_num_examples(examples, 0, len(positive_examples) * negative_ratio)
         pos_and_neg_examples = positive_examples + negative_examples
         if not eval:
             shuffle(pos_and_neg_examples)

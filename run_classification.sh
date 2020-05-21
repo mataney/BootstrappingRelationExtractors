@@ -21,25 +21,7 @@ if [[ $seed = null ]]; then seed=1; fi
 if [[ $logging_steps = null ]]; then logging_steps=100; fi
 if [[ $num_train_epochs = null ]]; then num_train_epochs=500; fi
 
-if [[ $training_method = null ]]; then training_method="annotated"; fi
-if [[ $training_method = "annotated" ]]
-then
-  do_train_type='--do_train'
-elif [[ $training_method = "distant" ]]
-then
-  do_train_type='--do_distant_train'
-elif [[ $training_method = "search" ]]
-then
-  do_train_type='--do_search_train'
-elif [[ $training_method = "search_from_generation" ]]
-then
-  do_train_type='--do_search_from_generation'
-elif [[ $training_method = "generation" ]]
-then
-  do_train_type='--do_generation_train'
-else
-  echo "Wrong training method"
-fi
+if [[ $training_method = null ]]; then training_method="train"; fi
 
 if [[ $task = "docred" ]]
 then
@@ -63,7 +45,7 @@ python run_classification.py \
   --model_name_or_path roberta-large \
   --task_name $task \
   --output_dir $output_dir \
-  "$do_train_type" \
+  --training_method $training_method \
   --do_full_dev_eval \
   --do_full_test_eval \
   --evaluate_during_training \

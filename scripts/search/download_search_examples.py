@@ -20,11 +20,11 @@ def main(args):
     capped_dataset_name = 'DocRED' if args.dataset == 'docred' else 'tacred'
     if args.triggers == 'single':
         patterns = SINGLE_TRIGGER_PATTERNS[args.dataset]
-        download_dir = os.path.join(SCRIPT_DIR, 'single_trigger_search_results_xxx')
+        download_dir = os.path.join(SCRIPT_DIR, capped_dataset_name, 'single_trigger_search_results_xxx')
         output_dir = os.path.join('data', capped_dataset_name, 'search', 'single_trigger_search_xxx')
     else:
-        patterns = ALL_TRIGGERS_PATTERNS
-        download_dir = os.path.join(SCRIPT_DIR, 'all_triggers_search_results_xxx')
+        patterns = ALL_TRIGGERS_PATTERNS[args.dataset]
+        download_dir = os.path.join(SCRIPT_DIR, capped_dataset_name, 'all_triggers_search_results_xxx')
         output_dir = os.path.join('data', capped_dataset_name, 'search', 'all_triggers_search_xxx')
     positive_outfiles, negative_outfiles = None, None
     if args.download:
@@ -34,7 +34,7 @@ def main(args):
         if positive_outfiles is None:
             positive_outfiles, _ = get_file_names(download_dir)
         if negative_outfiles is None:
-            _, negative_outfiles = get_file_names(os.path.join(SCRIPT_DIR, 'negs'))
+            _, negative_outfiles = get_file_names(os.path.join(SCRIPT_DIR, 'small_negs'))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         relations_num_rows = merge_and_save_examples(positive_outfiles, negative_outfiles, output_dir, patterns, args.dataset)
@@ -128,6 +128,7 @@ def read_entities_list(countries, states):
 def merge_and_save_examples(positive_outfiles, negative_outfiles, output_dir, patterns, dataset):
     relations_num_rows = {}
     for relation, relation_paths in tqdm(positive_outfiles.items()):
+        assert len(relation_paths) == len(patterns[relation])
         sent_ids_used_by_relation = merge_positive_examples_and_save(output_dir,
                                                                      relation,
                                                                      relation_paths,
