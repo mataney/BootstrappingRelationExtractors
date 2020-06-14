@@ -30,7 +30,3 @@ You can also evaluate the examples you downloaded with the `--evaluate` flag:
 ```
 python -m scripts.search.patterns_from_generation --generation_file generation_outputs/finished_files/with_triggers_for_search_using_generation/per:children.txt --relation per:children --dataset tacred --evaluate
 ```
-
-## create_grid.py
-
-No arguments passed, need to change in the script.

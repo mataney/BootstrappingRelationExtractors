@@ -33,7 +33,8 @@ def parse_arguments():
                         type=float,
                         required=False)
     parser.add_argument('-remove_pronouns', '--remove_pronouns',
-                        action='store_true')
+                        action='store_true',
+                        help="Not using this")
     args = parser.parse_args()
     return args
 
