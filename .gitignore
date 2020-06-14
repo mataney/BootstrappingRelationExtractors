@@ -8,8 +8,8 @@ runs/
 scripts/
 old/
 !scripts/README.md
-!scripts/filter_generations
-!scripts/generation_preprocess
+!scripts/filter_generations/*
+!scripts/generation_preprocess/*
 !scripts/__init__.py
 !scripts/search/__init__.py
 !scripts/seach/download_patterns_config.py
