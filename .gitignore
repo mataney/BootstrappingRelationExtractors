@@ -5,7 +5,21 @@
 
 data/
 runs/
+old/
+!scripts/README.md
+!scripts/filter_generations/filter_by_entities.py
+!scripts/filter_generations/filter_by_entities.py
+!scripts/generation_preprocess/create_tacred_datafiles.py
+!scripts/generation_preprocess/relation_canonical_form.py
+!scripts/__init__.py
+!scripts/search/__init__.py
+!scripts/seach/download_patterns_config.py
+!scripts/seach/download_search_examples.py
+!scripts/seach/patterns_from_generation.py
+scripts/
+
 classification_outputs/
+generation_outputs/
 log*
 
 scripts/search_results/

@@ -582,7 +582,13 @@ def main():
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_distant_train", action="store_true", help="Whether to run training on distant supervision data.")
     parser.add_argument("--do_search_train", action="store_true", help="Whether to run training on search supervision data.")
+    parser.add_argument("--do_search_from_generation_train", action="store_true", help="Whether to run training on search_from_generation supervision data.")
     parser.add_argument("--do_generation_train", action="store_true", help="Whether to run training on generation supervision data.")
+    parser.add_argument(
+        "--training_method",
+        default=None,
+        type=str
+    )
     parser.add_argument("--do_full_dev_eval", action="store_true", help="Whether to run eval over all possible relations on train eval split.")
     parser.add_argument("--do_full_test_eval", action="store_true", help="Whether to run eval over all possible relations on dev.")
     parser.add_argument(
@@ -662,7 +668,7 @@ def main():
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
-        and (args.do_train or args.do_distant_train or args.do_search_train or args.do_generation_train)
+        and (args.training_method is not None)
         and not args.overwrite_output_dir
     ):
         raise ValueError(
@@ -750,17 +756,13 @@ def main():
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
-    splits = ['train', 'distant', 'search', 'generation']
-    bools = [args.do_train, args.do_distant_train, args.do_search_train, args.do_generation_train]
-    splits_to_train = [s for s, b in zip(splits, bools) if b]
-    if len(splits_to_train) > 0:
-        assert len(splits_to_train) == 1
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, splits_to_train[0])
+    if args.training_method is not None:
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, args.training_method)
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
-    if len(splits_to_train) > 0 and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
+    if args.training_method is not None and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)

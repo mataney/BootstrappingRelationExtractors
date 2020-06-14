@@ -1,3 +1,5 @@
+source activate hugging_face
+
 num_samples=10
 
 while getopts m:o:s:p:t: option
