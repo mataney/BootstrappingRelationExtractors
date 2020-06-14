@@ -10,26 +10,28 @@ import wget
 
 from classification.re_processors import wrap_text
 from classification.re_config import RELATIONS_ENTITY_TYPES_FOR_SEARCH
-from scripts.search.download_patterns_config import SINGLE_TRIGGER_PATTERNS, ALL_TRIGGERS_PATTERNS, NEGATIVE_PATTERNS
+from scripts.search.download_patterns_config import SINGLE_TRIGGER_PATTERNS, ALL_TRIGGERS_PATTERNS, NEGATIVE_PATTERNS, SWAP_TRIGGERS_BY_ALTERNATIVES
 
 LIMIT = -1
-URL = 'http://34.89.233.227:5000'
+URL = 'http://35.198.109.203:5000'
 SCRIPT_DIR = 'scripts/search'
 
 def main(args):
     capped_dataset_name = 'DocRED' if args.dataset == 'docred' else 'tacred'
     if args.triggers == 'single':
         patterns = SINGLE_TRIGGER_PATTERNS[args.dataset]
-        download_dir = os.path.join(SCRIPT_DIR, capped_dataset_name, 'single_trigger_search_results_xxx')
-        output_dir = os.path.join('data', capped_dataset_name, 'search', 'single_trigger_search_xxx')
+        download_dir = os.path.join(SCRIPT_DIR, capped_dataset_name, 'single_trigger_search_results')
+        output_dir = os.path.join('data', capped_dataset_name, 'search', 'expanded_predicates_search')
     else:
         patterns = ALL_TRIGGERS_PATTERNS[args.dataset]
-        download_dir = os.path.join(SCRIPT_DIR, capped_dataset_name, 'all_triggers_search_results_xxx')
+        download_dir = os.path.join(SCRIPT_DIR, capped_dataset_name, 'all_triggers_search_results')
         output_dir = os.path.join('data', capped_dataset_name, 'search', 'all_triggers_search_xxx')
     positive_outfiles, negative_outfiles = None, None
+    if args.relations is not None:
+        patterns = {k: patterns[k] for k in args.relations}
     if args.download:
-        positive_outfiles = download_from_spike_search(download_dir, patterns, LIMIT)
-        # negative_outfiles = download_from_spike_search(download_dir, NEGATIVE_PATTERNS, LIMIT, use_odinson=True)
+        positive_outfiles = download_from_spike_search(download_dir, patterns, LIMIT, args.spike_dataset)
+        negative_outfiles = download_from_spike_search(download_dir, NEGATIVE_PATTERNS, LIMIT, args.spike_dataset, use_odinson=True)
     if args.merge_patterns:
         if positive_outfiles is None:
             positive_outfiles, _ = get_file_names(download_dir)
@@ -37,6 +39,8 @@ def main(args):
             _, negative_outfiles = get_file_names(os.path.join(SCRIPT_DIR, 'small_negs'))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+        if args.relations is not None:
+            positive_outfiles = {k: positive_outfiles[k] for k in args.relations}
         relations_num_rows = merge_and_save_examples(positive_outfiles, negative_outfiles, output_dir, patterns, args.dataset)
 
         update_file_lengths(os.path.join(output_dir, 'file_lengths.json'), relations_num_rows)
@@ -171,15 +175,30 @@ def merge_positive_examples_and_save(output_dir, relation, relation_paths, patte
                used_before(sent_ids_used, d['sentence_id']):
                 continue
 
-            text = wrap_text(d['sentence_text'].split(),
+            if 't' in d and d['t'] in SWAP_TRIGGERS_BY_ALTERNATIVES:
+                for alternative_trigger in SWAP_TRIGGERS_BY_ALTERNATIVES[d['t']]:
+                    text = d['sentence_text'].split()
+                    text[d['t_first_index']] = alternative_trigger # single token triggers
+                    text = wrap_text(text,
+                                    d['e1_first_index'],
+                                    d['e1_last_index'] + 1,
+                                    d['e2_first_index'],
+                                    d['e2_last_index'] + 1)
+                    if dataset == 'docred':
+                        text = clean_special_tokens(text)
+
+                    writer.writerow([text, relation, patterns[i], d['sentence_id']])
+            else:
+                text = wrap_text(d['sentence_text'].split(),
                                 d['e1_first_index'],
                                 d['e1_last_index'] + 1,
                                 d['e2_first_index'],
                                 d['e2_last_index'] + 1)
-            if dataset == 'docred':
-                text = clean_special_tokens(text)
+                if dataset == 'docred':
+                    text = clean_special_tokens(text)
 
-            writer.writerow([text, relation, patterns[i], d['sentence_id']])
+                writer.writerow([text, relation, patterns[i], d['sentence_id']])
+
             sent_ids_used[i].add(d['sentence_id'])
         search_file.close()
     out_file.close()
@@ -239,13 +258,13 @@ def map_array_given_header(arr, headers):
 
     return {headers[i]: int_if_possible(arr[i]) for i in range(len(headers))}
 
-def query_params(pattern, odinson):
+def query_params(pattern, spike_dataset, odinson):
     if odinson == False:
         return {
             "queries": {
                 "syntactic": pattern
             },
-            "data_set_name": "wikipedia",
+            "data_set_name": spike_dataset,
             "include_annotations": False
         }
     else:
@@ -255,18 +274,18 @@ def query_params(pattern, odinson):
                 "odinson": pattern,
                 "expansion": expansion
             },
-            "data_set_name": "wikipedia",
+            "data_set_name": spike_dataset,
             "include_annotations": False
             }
 
-def download_from_spike_search(download_dir, patterns_dict, limit, use_odinson=False):
+def download_from_spike_search(download_dir, patterns_dict, limit, spike_dataset, use_odinson=False):
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
     outfiles = defaultdict(list)
     for relation, patterns in tqdm(patterns_dict.items()):
         for id, pattern in enumerate(patterns):
             search_query_api = '/api/3/search/query'
-            search_query_params = query_params(pattern, use_odinson)
+            search_query_params = query_params(pattern, spike_dataset, use_odinson)
             download_tsv_params = f"?sentence_id=true&sentence_text=true&capture_indices=true"
             if limit > 0:
                 download_tsv_params += f"&limit={limit}"
@@ -311,5 +330,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, required=True, choices=['tacred', 'docred'])
     parser.add_argument("--download", action='store_true')
     parser.add_argument("--merge_patterns", action='store_true')
+    parser.add_argument("--spike_dataset", type=str, default='wikipedia', choices=['wikipedia', 'tacred-train-labeled'])
+    parser.add_argument('--relations', nargs='+')
     args = parser.parse_args()
     main(args)

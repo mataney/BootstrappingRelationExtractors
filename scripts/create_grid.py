@@ -15,7 +15,6 @@ def pos_logging_steps_ratio(training_method, pos):
 def get_ratio_negative(training_method, relation):
     ratio_negative_examples = {"per:children": 47, "org:founded_by": 22, "org:country_of_headquarters": 4, "per:religion": 2, "per:spouse": 29, "per:origin": 5, "per:date_of_death": 8, "per:city_of_death": 5, "child": 85, "date_of_death": 12, "founded_by": 247, "religion": 470, "spouse": 78, "country_of_origin": 57, "headquarters_location": 71, "place_of_death": 85}
 
-    return ratio_negative_examples[relation]
     return 10
 
 def get_num_positives(training_method, relation):

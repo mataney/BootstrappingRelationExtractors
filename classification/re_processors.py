@@ -78,6 +78,8 @@ class REProcessor(DataProcessor):
                                                                'search/single_trigger_search',
                                                                self.num_positive,
                                                                self.negative_ratio)
+        elif set_type == "search_over_tacred":
+            return self.create_search_examples(data_dir, 'search/single_trigger_search_over_tacred', self.num_positive, self.negative_ratio)
         else:
             raise Exception("Wrong set_type name")
 
@@ -119,7 +121,7 @@ class REProcessor(DataProcessor):
         positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
                                                         num_positive,
                                                         self.relation_name_adapter(self.positive_label))
-        examples_from_tacred = self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train")
+        examples_from_tacred = list(self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train"))
         shuffle(examples_from_tacred)
         negative_examples = self.get_first_num_examples(examples_from_tacred, 0, len(positive_examples) * negative_ratio)
         return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
@@ -129,7 +131,7 @@ class REProcessor(DataProcessor):
                                                search_folder: str,
                                                num_positive: int = None,
                                                negative_ratio: int = None) -> List[InputExample]:
-        examples_from_tacred = self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train")
+        examples_from_tacred = list(self._create_examples(self._read_json(os.path.join(data_dir, self.train_file)), "train"))
         shuffle(examples_from_tacred)
         positive_examples = self.get_first_num_examples(examples_from_tacred, 1, num_positive)
         negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),

@@ -116,3 +116,20 @@ ALL_TRIGGERS_PATTERNS = {
         "per:city_of_death": all_triggers_docred_city_of_death_patterns,
     },
 }
+
+SWAP_TRIGGERS_BY_ALTERNATIVES = {"child": ["child", "baby", "daughter", "son", "step-child", "step-daughter", "step-son", "stepdaughter", "stepson"],
+                                 "son": ["son", "baby", "child", "step-child", "step-son", "stepson"],
+                                 "daughter": ["daughter", "baby", "child", "step-child", "step-daughter", "stepdaughter"],
+                                 "children": ["children", "daughters", "sons", "step-children", "stepchildren", "stepdaughters", "stepsons"],
+                                 "daughters": ["daughters", "children", "step-children", "stepchildren", "stepdaughters"],
+                                 "sons": ["sons", "children", "step-children", "stepchildren", "stepsons"],
+                                 "founder": ["founder", "co-founder", "cofounder", "creator"],
+                                 "founded": ["founded", "created", "co-founded", "established", "forged", "formed", "launched", "opened", "shaped", "started"],
+                                 "wife": ["wife", "ex-wife", "widow", "bride"],
+                                 "husband": ["husband", "ex-husband", "widower", "groom"],
+                                 "marry": ["marry", "divorce"],
+                                 "marries": ["marries"],
+                                 "married": ["married", "divorced", "wed"],
+                                 "marrying": ["marrying", "divorcing"],
+                                 "dead": ["dead"],
+                                 "died": ["died", "executed", "killed", "dies", "perished", "succumbed", "passed", "murdered"]}
