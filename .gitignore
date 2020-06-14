@@ -5,7 +5,6 @@
 
 data/
 runs/
-scripts/
 old/
 !scripts/README.md
 !scripts/filter_generations/*
@@ -15,6 +14,7 @@ old/
 !scripts/seach/download_patterns_config.py
 !scripts/seach/download_search_examples.py
 !scripts/seach/patterns_from_generation.py
+scripts/
 
 classification_outputs/
 generation_outputs/
