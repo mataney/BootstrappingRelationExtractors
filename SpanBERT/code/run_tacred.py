@@ -84,6 +84,16 @@ def evaluate(model, device, eval_dataloader, eval_label_ids, num_labels, verbose
         logger.info("***** Eval results *****")
         for key in sorted(result.keys()):
             logger.info("  %s = %s", key, str(result[key]))
+
+    import ipdb; ipdb.set_trace()
+    full_eval_results = []
+    for title, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
+        if (args.output_mode == "regression" and pred) or (args.output_mode == "classification" and pred == positive_label_index):
+            relation_id = RELATION_MAPPING[args.task_name][args.relation_name]['id']
+            full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence.item()})
+    output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
+    json.dump(full_eval_results, open(output_eval_file, "w"))
+
     return preds, result
 
 
@@ -115,7 +125,7 @@ def main(args):
     logger.info("device: {}, n_gpu: {}, 16-bits training: {}".format(
         device, n_gpu, args.fp16))
 
-    processor = DataProcessor()
+    processor = DataProcessor(args.relation_name, args.num_positive_examples, args.ratio_negative_examples)
     label_list = processor.get_labels(args.data_dir, args.negative_label)
     label2id = {label: i for i, label in enumerate(label_list)}
     id2label = {i: label for i, label in enumerate(label_list)}
@@ -316,6 +326,9 @@ if __name__ == "__main__":
     parser.add_argument("--model", default=None, type=str, required=True)
     parser.add_argument("--data_dir", default=None, type=str, required=True,
                         help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
+    parser.add_argument("--relation_name", default=None, type=str, required=True, help="The relation name on which you want to do binary classification")
+    parser.add_argument("--num_positive_examples", default=None, type=int, required=True, help="The number of positive examples allowed for classification")
+    parser.add_argument("--ratio_negative_examples", default=None, type=int, required=True, help="The ratio of negative examples allowed for classification comparing to positive examples")
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--eval_per_epoch", default=10, type=int,

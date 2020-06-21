@@ -1,12 +1,15 @@
+from collections import Counter
 import json
 import logging
 import os
-from collections import Counter
+from random import shuffle
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+from classification.tacred_config import RELATION_MAPPING
 
 CLS = "[CLS]"
 SEP = "[SEP]"
@@ -36,6 +39,11 @@ class InputFeatures(object):
 
 class DataProcessor(object):
     """Processor for the TACRED data set."""
+    def __init__(self, relation_name, num_positive, negative_ratio):
+        self.positive_label = relation_name
+        self.num_positive = num_positive
+        self.negative_ratio = negative_ratio
+        self.relation_mapping = RELATION_MAPPING
 
     @classmethod
     def _read_json(cls, input_file):
@@ -45,8 +53,8 @@ class DataProcessor(object):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train")
+        examples = self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
+        return self.sample_examples(examples, self.num_positive, self.negative_ratio)
 
     def get_dev_examples(self, data_dir):
         """See base class."""
@@ -60,23 +68,27 @@ class DataProcessor(object):
 
     def get_labels(self, data_dir, negative_label="no_relation"):
         """See base class."""
-        dataset = self._read_json(os.path.join(data_dir, "train.json"))
-        count = Counter()
-        for example in dataset:
-            count[example['relation']] += 1
-        logger.info("%d labels" % len(count))
-        # Make sure the negative label is alwyas 0
-        labels = [negative_label]
-        for label, count in count.most_common():
-            logger.info("%s: %.2f%%" % (label, count * 100.0 / len(dataset)))
-            if label not in labels:
-                labels.append(label)
-        return labels
+        return [negative_label, self.positive_label]
+        # dataset = self._read_json(os.path.join(data_dir, "train.json"))
+        # count = Counter()
+        # for example in dataset:
+        #     count[example['relation']] += 1
+        # logger.info("%d labels" % len(count))
+        # # Make sure the negative label is alwyas 0
+        # labels = [negative_label]
+        # for label, count in count.most_common():
+        #     logger.info("%s: %.2f%%" % (label, count * 100.0 / len(dataset)))
+        #     if label not in labels:
+        #         labels.append(label)
+        # return labels
 
     def _create_examples(self, dataset, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
         for example in dataset:
+            label = example['relation']
+            if not (self._positive_relation(label) or self._allow_as_negative(example)):
+                continue
             sentence = [convert_token(token) for token in example['token']]
             assert example['subj_start'] >= 0 and example['subj_start'] <= example['subj_end'] \
                 and example['subj_end'] < len(sentence)
@@ -88,8 +100,39 @@ class DataProcessor(object):
                              span2=(example['obj_start'], example['obj_end']),
                              ner1=example['subj_type'],
                              ner2=example['obj_type'],
-                             label=example['relation']))
+                             label=label))
         return examples
+
+    def sample_examples(self, examples, num_positive, negative_ratio, eval = False):
+        examples = list(examples)
+        if not eval:
+            shuffle(examples)
+        positive_examples = self.get_first_num_examples(examples, True, num_positive)
+        negative_examples = self.get_first_num_examples(examples, False, len(positive_examples) * negative_ratio)
+        pos_and_neg_examples = positive_examples + negative_examples
+        if not eval:
+            shuffle(pos_and_neg_examples)
+
+        return pos_and_neg_examples
+
+    def get_first_num_examples(self, examples, positive, max_num):
+        if positive:
+            examples_in_label = [e for e in examples if e.label == self.positive_label]
+        else:
+            examples_in_label = [e for e in examples if e.label != self.positive_label]
+        if max_num is None:
+            return examples_in_label
+        return examples_in_label[:max_num]
+
+    def _positive_relation(self, relation_name: str) -> bool:
+        return relation_name == self.positive_label
+
+    def _allow_as_negative(self, example):
+        return self._same_entity_types_relation(example)
+
+    def _same_entity_types_relation(self, example):
+        return (example['subj_type'] in self.relation_mapping[self.positive_label]['subj_type'] and
+                example['obj_type'] in self.relation_mapping[self.positive_label]['obj_type'])
 
 
 def convert_examples_to_features(examples, label2id, max_seq_length, tokenizer, special_tokens, mode='text'):
