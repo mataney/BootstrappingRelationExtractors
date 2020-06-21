@@ -26,6 +26,7 @@ def score(key, prediction, verbose=False):
     # Loop over the data to compute a score
     for row in range(len(key)):
         gold = key[row]['relation']
+        if row not in prediction: continue
         guess = prediction[row]
          
         if gold == NO_RELATION and guess == NO_RELATION:
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     # Check that the lengths match
     if len(prediction) != len(key):
         print("Gold and prediction file must have same number of elements: %d in gold vs %d in prediction" % (len(key), len(prediction)))
-        exit(1)
+        # exit(1)
     
     # Score the predictions
     score(key, prediction, verbose=True)

@@ -65,6 +65,7 @@ from classification.re_processors import RELATION_MAPPING, TITLE_NAMES
 from classification.re_config import SPECIAL_TOKENS
 
 from models.mtb import RobertaForRelationClassification
+from models.mtb_bert import BertForRelationClassification
 
 
 try:
@@ -93,11 +94,11 @@ ALL_MODELS = sum(
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
+    "bert-rc": (BertConfig, BertForRelationClassification, BertTokenizer),
     "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
     "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
     "roberta-rc": (RobertaConfig, RobertaForRelationClassification, RobertaTokenizer),
-    "roberta-asaf": (RobertaConfig, RobertaModel, RobertaTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
     "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
     "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),

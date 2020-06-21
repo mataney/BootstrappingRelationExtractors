@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
@@ -19,7 +20,12 @@ class RobertaForRelationClassification(BertPreTrainedModel):
         self.num_labels = config.num_labels
 
         self.roberta = RobertaModel(config)
-        self.classifier = MTBClassificationHead(config)
+        if os.environ['THIN_CLASSIFIER'] == '1':
+            self.classifier = MTBClassificationHeadThin(config)
+        else:
+            self.classifier = MTBClassificationHead(config)
+
+        self.init_weights()
 
     def forward(
         self,
@@ -30,7 +36,7 @@ class RobertaForRelationClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         labels=None,
-        markers_mask=None
+        markers_mask=None,
     ):
         outputs = self.roberta(
             input_ids,
@@ -73,6 +79,19 @@ class MTBClassificationHead(nn.Module):
         x = self.dense(x)
         x = torch.tanh(x)
         x = self.dropout(x)
+        x = self.out_proj(x)
+        return x
+  
+class MTBClassificationHeadThin(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.out_proj = nn.Linear(config.hidden_size*2, config.num_labels)
+
+    def forward(self, features, markers_mask):
+        batch_size, _, feature_size = features.size()
+        assert all(markers_mask.sum(1) == 2)
+        # take [E1] and [E2] tokens
+        x = features.masked_select(markers_mask.unsqueeze(2)).view(batch_size, 2*feature_size)
         x = self.out_proj(x)
         return x
   
