@@ -14,7 +14,6 @@ import sys
 class MultiprocessingPdb(pdb.Pdb):
     """A Pdb wrapper that works in a multiprocessing environment.
 
-    Usage: `from fairseq import pdb; pdb.set_trace()`
     """
 
     _stdin_fd = sys.stdin.fileno()

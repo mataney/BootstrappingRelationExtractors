@@ -138,8 +138,6 @@ def read_mrqa_examples(input_file, is_training):
             orig_answer_text = None
             if is_training:
                 answers = qa["detected_answers"]
-                # import ipdb
-                # ipdb.set_trace()
                 spans = sorted([span for spans in answers for span in spans['char_spans']])
                 # take first span
                 char_start, char_end = spans[0][0], spans[0][1]

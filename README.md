@@ -12,6 +12,7 @@ Running with oto example:
 ##### CMD:
 ```
 bash run_classification.sh
+bash tacred_finetuning.sh
 ```
 
 ##### Out Vars:

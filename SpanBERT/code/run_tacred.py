@@ -5,6 +5,7 @@ Adding some special tokens instead of doing span pair prediction in this version
 """
 
 import argparse
+import json
 import logging
 import os
 import random
@@ -76,7 +77,9 @@ def evaluate(model, device, eval_dataloader, eval_label_ids, num_labels, verbose
                 preds[0], logits.detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
-    preds = np.argmax(preds[0], axis=1)
+    confidences, preds = torch.max(torch.from_numpy(preds[0]).float().softmax(1), axis=1)
+    preds = preds.detach().cpu().numpy()
+    confidences = confidences.detach().cpu().numpy()
     result = compute_f1(preds, eval_label_ids.numpy())
     result['accuracy'] = simple_accuracy(preds, eval_label_ids.numpy())
     result['eval_loss'] = eval_loss
@@ -85,16 +88,7 @@ def evaluate(model, device, eval_dataloader, eval_label_ids, num_labels, verbose
         for key in sorted(result.keys()):
             logger.info("  %s = %s", key, str(result[key]))
 
-    import ipdb; ipdb.set_trace()
-    full_eval_results = []
-    for title, pred, confidence in zip(titles, relation_heads, relation_tails, preds, normalized_preds):
-        if (args.output_mode == "regression" and pred) or (args.output_mode == "classification" and pred == positive_label_index):
-            relation_id = RELATION_MAPPING[args.task_name][args.relation_name]['id']
-            full_eval_results.append({'title': title, 'h_idx': int(h_idx), 't_idx': int(t_idx), 'r': relation_id, 'c': confidence.item()})
-    output_eval_file = os.path.join(eval_output_dir, prefix, f"{set_type}_results.json")
-    json.dump(full_eval_results, open(output_eval_file, "w"))
-
-    return preds, result
+    return preds, result, confidences
 
 
 def main(args):
@@ -223,6 +217,7 @@ def main(args):
             tr_loss = 0
             nb_tr_examples = 0
             nb_tr_steps = 0
+            n_no_improve = 0
             for epoch in range(int(args.num_train_epochs)):
                 model.train()
                 logger.info("Start epoch #{} (lr = {})...".format(epoch, lr))
@@ -256,13 +251,13 @@ def main(args):
                         optimizer.zero_grad()
                         global_step += 1
 
-                    if (step + 1) % eval_step == 0:
+                    if (global_step + 1) % eval_step == 0:
                         logger.info('Epoch: {}, Step: {} / {}, used_time = {:.2f}s, loss = {:.6f}'.format(
                                      epoch, step + 1, len(train_batches),
                                      time.time() - start_time, tr_loss / nb_tr_steps))
                         save_model = False
                         if args.do_eval:
-                            preds, result = evaluate(model, device, eval_dataloader, eval_label_ids, num_labels)
+                            preds, result, _ = evaluate(model, device, eval_dataloader, eval_label_ids, num_labels)
                             model.train()
                             result['global_step'] = global_step
                             result['epoch'] = epoch
@@ -277,6 +272,9 @@ def main(args):
                                 save_model = True
                                 logger.info("!!! Best dev %s (lr=%s, epoch=%d): %.2f" %
                                             (args.eval_metric, str(lr), epoch, result[args.eval_metric] * 100.0))
+                                n_no_improve = 0
+                            else:
+                                n_no_improve += 1
                         else:
                             save_model = True
 
@@ -293,7 +291,24 @@ def main(args):
                                     for key in sorted(result.keys()):
                                         writer.write("%s = %s\n" % (key, str(result[key])))
 
+                if n_no_improve >= args.patience:
+                    logger.info("Patience Ended.")
+                    break
+
     if args.do_eval:
+        model = BertForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
+        if args.fp16:
+            model.half()
+        model.to(device)
+        preds, result, confidences = evaluate(model, device, eval_dataloader, eval_label_ids, num_labels)
+        with open(os.path.join(args.output_dir, "dev_predictions.json"), "w") as f:
+            eval_results = []
+            for ex, pred, confidence in zip(eval_examples, preds, confidences):
+                eval_results.append({'guid': ex.guid, 'r': id2label[pred], 'c': float(confidence)})
+            json.dump(eval_results, f)
+        with open(os.path.join(args.output_dir, "dev_results.txt"), "w") as f:
+            for key in sorted(result.keys()):
+                f.write("%s = %s\n" % (key, str(result[key])))
         if args.eval_test:
             eval_examples = processor.get_test_examples(args.data_dir)
             eval_features = convert_examples_to_features(
@@ -308,17 +323,16 @@ def main(args):
             eval_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
             eval_dataloader = DataLoader(eval_data, batch_size=args.eval_batch_size)
             eval_label_ids = all_label_ids
-        model = BertForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
-        if args.fp16:
-            model.half()
-        model.to(device)
-        preds, result = evaluate(model, device, eval_dataloader, eval_label_ids, num_labels)
-        with open(os.path.join(args.output_dir, "predictions.txt"), "w") as f:
-            for ex, pred in zip(eval_examples, preds):
-                f.write("%s\t%s\n" % (ex.guid, id2label[pred]))
-        with open(os.path.join(args.output_dir, "test_results.txt"), "w") as f:
-            for key in sorted(result.keys()):
-                f.write("%s = %s\n" % (key, str(result[key])))
+
+            preds, result, confidences = evaluate(model, device, eval_dataloader, eval_label_ids, num_labels)
+            with open(os.path.join(args.output_dir, "test_predictions.json"), "w") as f:
+                eval_results = []
+                for ex, pred, confidence in zip(eval_examples, preds, confidences):
+                    eval_results.append({'guid': ex.guid, 'r': id2label[pred], 'c': float(confidence)})
+                json.dump(eval_results, f)
+            with open(os.path.join(args.output_dir, "test_results.txt"), "w") as f:
+                for key in sorted(result.keys()):
+                    f.write("%s = %s\n" % (key, str(result[key])))
 
 
 if __name__ == "__main__":
@@ -329,9 +343,10 @@ if __name__ == "__main__":
     parser.add_argument("--relation_name", default=None, type=str, required=True, help="The relation name on which you want to do binary classification")
     parser.add_argument("--num_positive_examples", default=None, type=int, required=True, help="The number of positive examples allowed for classification")
     parser.add_argument("--ratio_negative_examples", default=None, type=int, required=True, help="The ratio of negative examples allowed for classification comparing to positive examples")
+    parser.add_argument("--patience", default=-1, type=int, help="Patience for Early Stopping.")
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
-    parser.add_argument("--eval_per_epoch", default=10, type=int,
+    parser.add_argument("--eval_per_epoch", default=10, type=float,
                         help="How many times it evaluates on dev set per epoch")
     parser.add_argument("--max_seq_length", default=128, type=int,
                         help="The maximum total input sequence length after WordPiece tokenization. \n"

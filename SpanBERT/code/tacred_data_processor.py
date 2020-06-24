@@ -82,12 +82,15 @@ class DataProcessor(object):
         #         labels.append(label)
         # return labels
 
-    def _create_examples(self, dataset, set_type):
+    def _create_examples(self, dataset, set_type, negative_label='no_relation'):
         """Creates examples for the training and dev sets."""
         examples = []
         for example in dataset:
-            label = example['relation']
-            if not (self._positive_relation(label) or self._allow_as_negative(example)):
+            if self._positive_relation(example['relation']):
+                label = example['relation']
+            elif self._allow_as_negative(example):
+                label = negative_label
+            else:
                 continue
             sentence = [convert_token(token) for token in example['token']]
             assert example['subj_start'] >= 0 and example['subj_start'] <= example['subj_end'] \
