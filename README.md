@@ -1,13 +1,12 @@
-# Relation Generation Using GPT2
+# Bootstrapping Relation Extractors
+
+Implementation of "Bootstrapping Relation Extractors using Syntactic Search by Examples".
 
 ## Classification
 
 ### Classification and Evaluation
 
 You can find how to run the classification and evluation script in `run_classification.sh`.
-
-#### Oto
-Running with oto example:
 
 ##### CMD:
 ```
@@ -52,16 +51,6 @@ If All, need to add "per:religion".
 Generation
 ```
 {"task": ["tacred"], "training_method": ["generation"], "relation_name": ["org:founded_by"], "num_positive_examples": [100], "ratio_negative_examples": [10], "seed": [1,2,3], "logging_steps": [100]}
-
- #### Explore Errors
-
- You can run `expore_error_types.py` to explore the outputs of your model, just copy the RAW from Oto. Then, you can run the analyzing in the following way:
-
- ```
- python expore_error_types.py --raw raw_file --confidence_threshold threshold --report tp fp fn
- ```
-
- Where `threshold` should be the best dev threshold, and `report` should by one or more from `[tp, fp, fn]` that stand for "true positive", "false poritive" and "false negative'.
 
 ## Generation
 

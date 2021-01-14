@@ -8,14 +8,16 @@ source activate hugging_face
 # change working dir
 cd matan/dev/relation_generation_using_gpt2
 
-relation_name=$(jq -r ".relation_name" "$OTO_INPUT")
-num_positive_examples=$(jq ".num_positive_examples" "$OTO_INPUT")
-ratio_negative_examples=$(jq ".ratio_negative_examples" "$OTO_INPUT")
-logging_steps=$(jq ".logging_steps" "$OTO_INPUT")
-training_method=$(jq -r ".training_method" "$OTO_INPUT")
-num_train_epochs=$(jq -r ".max_epochs" "$OTO_INPUT")
-seed=$(jq ".seed" "$OTO_INPUT")
-task=$(jq -r ".task" "$OTO_INPUT")
+# Set all these before running
+relation_name=$RELATION_NAME
+num_positive_examples=$NUM_POSITIVE_EXAMPLES
+ratio_negative_examples=$RATIO_NEGATIVE_EXAMPLES
+logging_steps=$LOGGING_STEPS
+training_method=$TRAINING_METHOD
+num_train_epochs=$NUM_TRAIN_EPOCHS
+seed=$SEED
+task=$TASK
+log_dir=$LOG_DIR
 
 if [[ $seed = null ]]; then seed=1; fi
 if [[ $logging_steps = null ]]; then logging_steps=100; fi
@@ -64,7 +66,7 @@ python run_classification.py \
   --seed $seed \
   --gradient_accumulation_steps 5 > log_"$relation_name"_"$num_positive_examples"_"$ratio_negative_examples".txt 2>&1
 
-python -m scripts.check_num_of_examples $data_dir $OTO_BACKUP/num_examples.json
+python -m scripts.check_num_of_examples $data_dir $log_dir/num_examples.json
 
 python -m classification.evaluation."$task"_evaluation --gold_dir $data_dir --gold_file $dev_file --relation_name $relation_name --pred_file "$output_dir/full_dev_eval_results.json" --output_file "$output_dir/full_dev_eval_scores.json"
 
@@ -89,7 +91,7 @@ jq -n --slurpfile dev_eval_content "$output_dir/full_dev_eval_results.json" \
     full_test_eval_results:$test_eval_content,
     full_dev_eval_results:$dev_eval_content
     }' \
-  > "$OTO_BACKUP/full_results.json"
+  > "$log_dir/full_results.json"
 
 
 end=`date +%s`
@@ -99,7 +101,7 @@ time="$(($secs/3600))h$(($secs%3600/60))m$(($secs%60))s"
 jq -n --arg time $time \
   --slurpfile dev_eval_scores "$output_dir/full_dev_eval_scores.json" \
   --slurpfile test_eval_scores "$output_dir/full_test_eval_scores.json" \
-  --slurpfile num_examples "$OTO_BACKUP/num_examples.json" \
+  --slurpfile num_examples "$log_dir/num_examples.json" \
   '{
     test_F1:$test_eval_scores[0].F1,
     test_precision:$test_eval_scores[0].precision,
@@ -111,4 +113,4 @@ jq -n --arg time $time \
     num_examples:$num_examples,
     time:$time
     }' \
-  > "$OTO_OUTPUT"
+  > "$log_dir/output"
