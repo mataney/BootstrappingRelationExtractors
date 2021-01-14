@@ -143,7 +143,7 @@ def main(args):
         eval_label_ids = all_label_ids
 
     if args.do_train:
-        train_examples = processor.get_train_examples(args.data_dir)
+        train_examples = processor.get_train_examples(args.data_dir, args.training_method)
         train_features = convert_examples_to_features(
                 train_examples, label2id, args.max_seq_length, tokenizer, special_tokens, args.feature_mode)
 
@@ -344,6 +344,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_positive_examples", default=None, type=int, required=True, help="The number of positive examples allowed for classification")
     parser.add_argument("--ratio_negative_examples", default=None, type=int, required=True, help="The ratio of negative examples allowed for classification comparing to positive examples")
     parser.add_argument("--patience", default=-1, type=int, help="Patience for Early Stopping.")
+    parser.add_argument("--training_method", default=None, type=str, choices=['train', 'search'])
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--eval_per_epoch", default=10, type=float,

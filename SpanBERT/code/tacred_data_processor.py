@@ -1,8 +1,9 @@
-from collections import Counter
+import csv
 import json
 import logging
+from math import ceil
 import os
-from random import shuffle
+from random import shuffle, sample
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -10,6 +11,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s
 logger = logging.getLogger(__name__)
 
 from classification.tacred_config import RELATION_MAPPING
+from classification.re_config import RELATIONS_ENTITY_TYPES_FOR_SEARCH
 
 CLS = "[CLS]"
 SEP = "[SEP]"
@@ -44,6 +46,7 @@ class DataProcessor(object):
         self.num_positive = num_positive
         self.negative_ratio = negative_ratio
         self.relation_mapping = RELATION_MAPPING
+        self.min_examples_per_relation = 20
 
     @classmethod
     def _read_json(cls, input_file):
@@ -51,7 +54,107 @@ class DataProcessor(object):
             data = json.load(reader)
         return data
 
-    def get_train_examples(self, data_dir):
+    def get_train_examples(self, data_dir, training_method):
+        if training_method == "train":
+            return self.get_annotated_examples(data_dir)
+        elif training_method == "search":
+            return self.get_search_examples(data_dir)
+        else:
+            raise Exception("Wrong set_type name")
+
+    def get_search_examples(self, data_dir):
+        search_folder = 'search/single_trigger_search'
+        return self.create_search_examples(data_dir, search_folder, self.num_positive, self.negative_ratio)
+
+    def create_search_examples(self,
+                               data_dir,
+                               search_folder,
+                               num_positive,
+                               negative_ratio):
+        positive_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
+                                                        num_positive,
+                                                        self.relation_name_adapter(self.positive_label))
+        negative_examples = self.sample_search_examples(os.path.join(data_dir, search_folder),
+                                                        len(positive_examples) * negative_ratio,
+                                                        self.relations_entity_types_for_search(self.positive_label))
+        return sample(positive_examples + negative_examples, len(positive_examples + negative_examples))
+
+    def sample_search_examples(self, data_dir, num_to_sample, relation):
+        def count_search_results(file: str, relation_name: str):
+            return json.load(open(file, 'r', encoding="utf-8"))[relation_name]
+
+        num_of_patterns = count_search_results(os.path.join(data_dir, 'file_lengths.json'), relation)
+        indices = self._sample_indices(num_of_patterns, num_to_sample)
+        examples = list(self._create_search_examples_given_row_ids(
+            os.path.join(data_dir, relation), set(indices)
+        ))
+        return examples
+
+    def _sample_indices(self, num_of_patterns, num_to_sample):
+        samples_per_pattern = [max(self.min_examples_per_relation, ceil(num_to_sample / len(num_of_patterns))) for _ in num_of_patterns]
+        return self._equal_samples_per_pattern(num_of_patterns, samples_per_pattern)
+
+    def relation_name_adapter(self, relation: str):
+        return relation
+
+    def relations_entity_types_for_search(self, relation: str):
+        relation = self.relation_name_adapter(relation)
+        entity_types = RELATIONS_ENTITY_TYPES_FOR_SEARCH[relation]
+        return f"{relation}-{entity_types}"
+
+    def _create_search_examples_given_row_ids(self, search_file, row_ids):
+        ner1, ner2 = RELATIONS_ENTITY_TYPES_FOR_SEARCH[self.positive_label].split(':')
+        with open(search_file, 'r', encoding="utf-8") as f:
+            reader = csv.reader(f, delimiter='\t')
+            for i, doc in enumerate(reader):
+                if i in row_ids:
+                    subj_start, subj_end, obj_start, obj_end, unwrapped_sent = self.unwrap(doc[0])
+                    yield InputExample(guid=f"search_{doc[3]}",
+                                       sentence=unwrapped_sent,
+                                       span1=(subj_start, subj_end),
+                                       span2=(obj_start, obj_end),
+                                       ner1=ner1,
+                                       ner2=ner2,
+                                       label=self._relation_label(doc[1]))
+
+    @classmethod
+    def unwrap(cls, sentence):
+        sent_list = sentence.split()
+        subj_start = sent_list.index('[E1]')
+        subj_end = sent_list.index('[/E1]')
+        obj_start = sent_list.index('[E2]')
+        obj_end = sent_list.index('[/E2]')
+        if subj_start < obj_start:
+            subj_end -= 2
+            obj_start -= 2
+            obj_end -= 4
+        else:
+            obj_end -= 2
+            subj_start -= 2
+            subj_end -= 4
+        sent_list.remove('[E1]')
+        sent_list.remove('[/E1]')
+        sent_list.remove('[E2]')
+        sent_list.remove('[/E2]')
+        return subj_start, subj_end, obj_start, obj_end, sent_list
+    
+    def _relation_label(self, relation_name, negative_examples = "no_relation") -> str:
+        return relation_name if self._positive_relation(relation_name) else negative_examples
+
+    @classmethod
+    def _equal_samples_per_pattern(cls, num_of_patterns, nums_to_sample):
+        ret = []
+        file_shift = 0
+        for pattern_examples, num_to_sample in zip(num_of_patterns.values(), nums_to_sample):
+            if num_to_sample > pattern_examples:
+                num_to_sample = pattern_examples
+            indices = sample(range(file_shift, file_shift + pattern_examples), num_to_sample)
+            file_shift += pattern_examples
+            ret += indices
+
+        return ret
+    
+    def get_annotated_examples(self, data_dir):
         """See base class."""
         examples = self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
         return self.sample_examples(examples, self.num_positive, self.negative_ratio)
