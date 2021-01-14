@@ -19,7 +19,6 @@ old/
 scripts/
 
 classification_outputs/
-generation_outputs/
 log*
 
 scripts/search_results/
