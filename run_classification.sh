@@ -6,7 +6,7 @@ start=`date +%s`
 source activate hugging_face
 
 # change working dir
-cd matan/dev/relation_generation_using_gpt2
+cd $WORKING_DIR
 
 # Set all these before running
 relation_name=$RELATION_NAME
